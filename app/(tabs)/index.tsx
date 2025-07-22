@@ -1,75 +1,143 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { Button, Image, View, StyleSheet, Text, ScrollView, Alert } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import axios from 'axios';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+// ✅ GPTに送るプロンプト作成関数
+const prompt = (ocrText: string) => `
+次のレシートのテキストを読み取り、日付、店名、商品名と価格、合計金額をJSON形式にしてください。
 
+レシート内容:
+${ocrText}
+
+JSON形式:
+{
+  "date": "YYYY-MM-DD",
+  "store": "店舗名",
+  "items": [
+    { "name": "商品名", "price": 金額 }
+  ],
+  "total": 合計金額
+}
+`;
+
+// ✅ GPT API呼び出し関数
+const sendToGPT = async (ocrText: string): Promise<string> => {
+  const openaiApiKey = '';
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: prompt(ocrText) }],
+        temperature: 0,
+      }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      console.error('GPTエラー詳細:', error);
+      throw new Error('GPT API エラー');
+    }
+
+    const data = await res.json();
+    return data.choices[0].message.content;
+  } catch (error) {
+    console.error('GPTエラー:', error);
+    return 'GPTでの解析に失敗しました';
+  }
+};
+
+
+// ✅ base64変換関数
+const getBase64FromUri = async (uri: string): Promise<string> => {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = (reader.result as string).split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
+// ✅ 画面本体
 export default function HomeScreen() {
+  const [image, setImage] = useState<string | null>(null);
+  const [textResult, setTextResult] = useState<string>('');
+
+  // 📷 カメラ起動 → OCR → GPT
+  const pickImage = async () => {
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: false,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      setImage(asset.uri);
+      await sendToOCR(asset.uri);
+    } else {
+      console.log('撮影キャンセル');
+    }
+  };
+
+  // 🧠 OCR処理＋GPTへ送信
+  const sendToOCR = async (uri: string) => {
+    try {
+      setTextResult('OCR・GPT解析中...');
+
+      const base64 = await getBase64FromUri(uri);
+      const visionApiKey = ''; 
+
+      const response = await axios.post(
+        `https://vision.googleapis.com/v1/images:annotate?key=${visionApiKey}`,
+        {
+          requests: [
+            {
+              image: { content: base64 },
+              features: [{ type: 'TEXT_DETECTION' }],
+            },
+          ],
+        }
+      );
+
+      const text = response.data.responses[0]?.fullTextAnnotation?.text;
+
+      if (!text) {
+        setTextResult('文字が読み取れませんでした');
+        return;
+      }
+
+      console.log('OCR結果:', text);
+      const json = await sendToGPT(text);
+      setTextResult(json);
+    } catch (error) {
+      console.error('OCR処理エラー:', error);
+      Alert.alert('エラー', 'OCRまたはGPTの処理に失敗しました');
+      setTextResult('処理に失敗しました');
+    }
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Button title="レシートを撮影" onPress={pickImage} />
+      {image && <Image source={{ uri: image }} style={styles.image} />}
+      <Text style={styles.text}>{textResult}</Text>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
+  container: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  image: { width: 300, height: 400, marginTop: 20 },
+  text: { marginTop: 20, fontSize: 14},
 });
