@@ -1,5 +1,6 @@
+// app/scan.tsx
 import React, { useState } from 'react';
-import { Button, Image, View, StyleSheet, Text, ScrollView, Alert } from 'react-native';
+import { Button, Image, StyleSheet, Text, ScrollView, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 
@@ -23,7 +24,7 @@ JSON形式:
 
 // ✅ GPT API呼び出し関数
 const sendToGPT = async (ocrText: string): Promise<string> => {
-  const openaiApiKey = '';
+  const openaiApiKey = ''; // ★あとで環境変数などに出すと良い
 
   try {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -53,7 +54,6 @@ const sendToGPT = async (ocrText: string): Promise<string> => {
   }
 };
 
-
 // ✅ base64変換関数
 const getBase64FromUri = async (uri: string): Promise<string> => {
   const response = await fetch(uri);
@@ -70,7 +70,7 @@ const getBase64FromUri = async (uri: string): Promise<string> => {
 };
 
 // ✅ 画面本体
-export default function HomeScreen() {
+export default function ScanScreen() {
   const [image, setImage] = useState<string | null>(null);
   const [textResult, setTextResult] = useState<string>('');
 
@@ -96,7 +96,7 @@ export default function HomeScreen() {
       setTextResult('OCR・GPT解析中...');
 
       const base64 = await getBase64FromUri(uri);
-      const visionApiKey = ''; 
+      const visionApiKey = ''; // ★ここもあとで外出し推奨
 
       const response = await axios.post(
         `https://vision.googleapis.com/v1/images:annotate?key=${visionApiKey}`,
@@ -139,5 +139,5 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
   image: { width: 300, height: 400, marginTop: 20 },
-  text: { marginTop: 20, fontSize: 14},
+  text: { marginTop: 20, fontSize: 14 },
 });

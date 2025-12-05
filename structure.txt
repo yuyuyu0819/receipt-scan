@@ -1,0 +1,65 @@
+フォルダー パスの一覧:  ボリューム Windows
+ボリューム シリアル番号は EC72-C42A です
+C:.
+│  .gitignore
+│  app.json
+│  eslint.config.js
+│  package-lock.json
+│  package.json
+│  README.md
+│  structure.txt
+│  tsconfig.json
+│  
+├─.vscode
+│      settings.json
+│      
+├─app
+│  │  +not-found.tsx
+│  │  index.tsx
+│  │  _layout.tsx
+│  │  
+│  └─(tabs)
+│          explore.tsx
+│          index.tsx
+│          _layout.tsx
+│          
+├─assets
+│  ├─fonts
+│  │      SpaceMono-Regular.ttf
+│  │      
+│  └─images
+│          adaptive-icon.png
+│          favicon.png
+│          icon.png
+│          partial-react-logo.png
+│          react-logo.png
+│          react-logo@2x.png
+│          react-logo@3x.png
+│          splash-icon.png
+│          
+├─components
+│  │  Collapsible.tsx
+│  │  ExternalLink.tsx
+│  │  HapticTab.tsx
+│  │  HelloWave.tsx
+│  │  ParallaxScrollView.tsx
+│  │  ThemedText.tsx
+│  │  ThemedView.tsx
+│  │  
+│  └─ui
+│          IconSymbol.ios.tsx
+│          IconSymbol.tsx
+│          TabBarBackground.ios.tsx
+│          TabBarBackground.tsx
+│          
+├─constants
+│      Colors.ts
+│      
+├─hooks
+│      useColorScheme.ts
+│      useColorScheme.web.ts
+│      useThemeColor.ts
+│      
+└─scripts
+        reset-project.js
+        
