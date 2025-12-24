@@ -1,18 +1,18 @@
+import Constants from 'expo-constants';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
-  Pressable,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import Constants from 'expo-constants';
 
 const getApiBaseUrl = () => {
   if (process.env.EXPO_PUBLIC_API_BASE_URL) {
@@ -131,7 +131,7 @@ export default function ReceiptFlow() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ image: base64 }),
+        body: JSON.stringify({ imageBase64 : base64 }),
       });
 
       if (!response.ok) {
