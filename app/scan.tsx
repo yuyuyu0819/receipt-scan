@@ -1,4 +1,4 @@
-import ReceiptFlow from '@/components/ReceiptFlow';
+import ReceiptFlow from '../components/ReceiptFlow';
 
 export default function ScanScreen() {
   return <ReceiptFlow />;

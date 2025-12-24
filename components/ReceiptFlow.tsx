@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import axios from 'axios';
+const API_BASE_URL = 'http://localhost:8080';
 
 type ReceiptItem = {
   name: string;
@@ -32,77 +32,22 @@ const createEmptyReceipt = (): ReceiptData => ({
   items: [],
 });
 
-const parseGptJson = (raw: string): ReceiptData | null => {
-  try {
-    const cleaned = raw.replace(/```json|```/g, '').trim();
-    const start = cleaned.indexOf('{');
-    const end = cleaned.lastIndexOf('}');
-    if (start === -1 || end === -1) return null;
-    const parsed = JSON.parse(cleaned.slice(start, end + 1));
-    return {
-      store: parsed.store ?? '',
-      date: parsed.date ?? '',
-      total: parsed.total !== undefined ? String(parsed.total) : '',
-      items: Array.isArray(parsed.items)
-        ? parsed.items.map((item: { name?: string; price?: number }) => ({
-            name: item?.name ?? '',
-            price: item?.price !== undefined ? String(item.price) : '',
-          }))
-        : [],
-    };
-  } catch (error) {
-    console.error('JSON parse error:', error);
-    return null;
-  }
-};
-
-const prompt = (ocrText: string) => `
-次のレシートのテキストを読み取り、日付、店名、商品名と価格、合計金額をJSON形式にしてください。
-
-レシート内容:
-${ocrText}
-
-JSON形式:
-{
-  "date": "YYYY-MM-DD",
-  "store": "店舗名",
-  "items": [
-    { "name": "商品名", "price": 金額 }
-  ],
-  "total": 合計金額
-}
-`;
-
-const sendToGPT = async (ocrText: string): Promise<string> => {
-  const openaiApiKey = '';
-
-  try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: prompt(ocrText) }],
-        temperature: 0,
-      }),
-    });
-
-    if (!res.ok) {
-      const error = await res.json();
-      console.error('GPTエラー詳細:', error);
-      throw new Error('GPT API エラー');
-    }
-
-    const data = await res.json();
-    return data.choices[0].message.content;
-  } catch (error) {
-    console.error('GPTエラー:', error);
-    return 'GPTでの解析に失敗しました';
-  }
-};
+const parseFormattedReceipt = (formatted: {
+  store?: string;
+  date?: string;
+  total?: number;
+  items?: Array<{ name?: string; price?: number }>;
+}): ReceiptData => ({
+  store: formatted.store ?? '',
+  date: formatted.date ?? '',
+  total: formatted.total !== undefined ? String(formatted.total) : '',
+  items: Array.isArray(formatted.items)
+    ? formatted.items.map((item) => ({
+        name: item?.name ?? '',
+        price: item?.price !== undefined ? String(item.price) : '',
+      }))
+    : [],
+});
 
 const getBase64FromUri = async (uri: string): Promise<string> => {
   const response = await fetch(uri);
@@ -159,35 +104,27 @@ export default function ReceiptFlow() {
       setErrorMessage(null);
 
       const base64 = await getBase64FromUri(uri);
-      const visionApiKey = '';
 
-      const response = await axios.post(
-        `https://vision.googleapis.com/v1/images:annotate?key=${visionApiKey}`,
-        {
-          requests: [
-            {
-              image: { content: base64 },
-              features: [{ type: 'TEXT_DETECTION' }],
-            },
-          ],
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/api/ocr`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ image: base64 }),
+      });
 
-      const text = response.data.responses[0]?.fullTextAnnotation?.text;
+      if (!response.ok) {
+        throw new Error(`OCR API error: ${response.status}`);
+      }
 
-      if (!text) {
-        setErrorMessage('文字が読み取れませんでした');
+      const data = await response.json();
+      if (!data?.formatted) {
+        setErrorMessage('解析結果を読み取れませんでした');
+        setReceipt(createEmptyReceipt());
         return;
       }
 
-      const json = await sendToGPT(text);
-      const parsed = parseGptJson(json);
-      if (!parsed) {
-        setErrorMessage('解析結果を読み取れませんでした');
-        setReceipt(createEmptyReceipt());
-      } else {
-        setReceipt(parsed);
-      }
+      setReceipt(parseFormattedReceipt(data.formatted));
     } catch (error) {
       console.error('OCR処理エラー:', error);
       Alert.alert('エラー', 'OCRまたはGPTの処理に失敗しました');
@@ -228,8 +165,37 @@ export default function ReceiptFlow() {
     });
   };
 
-  const handleRegister = () => {
-    Alert.alert('登録', 'レシートを登録しました');
+  const handleRegister = async () => {
+    if (!receipt) return;
+
+    try {
+      const payload = {
+        store: receipt.store,
+        date: receipt.date,
+        total: Number(receipt.total || 0),
+        items: receipt.items.map((item) => ({
+          name: item.name,
+          price: Number(item.price || 0),
+        })),
+      };
+
+      const response = await fetch(`${API_BASE_URL}/api/receipts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Register API error: ${response.status}`);
+      }
+
+      Alert.alert('登録', 'レシートを登録しました');
+    } catch (error) {
+      console.error('登録エラー:', error);
+      Alert.alert('エラー', '登録に失敗しました');
+    }
   };
 
   return (
