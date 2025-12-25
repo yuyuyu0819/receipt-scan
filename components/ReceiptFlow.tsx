@@ -1,11 +1,10 @@
-import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,26 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-
-const getApiBaseUrl = () => {
-  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
-    return process.env.EXPO_PUBLIC_API_BASE_URL;
-  }
-
-  const hostUri =
-    Constants.expoConfig?.hostUri ??
-    (Constants as { manifest2?: { extra?: { expoClient?: { hostUri?: string } } } })?.manifest2?.extra
-      ?.expoClient?.hostUri ??
-    Constants.manifest?.debuggerHost;
-  const host = hostUri?.split(':')[0];
-  if (host) {
-    return `http://${host}:8080`;
-  }
-
-  return Platform.OS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080';
-};
-
-const API_BASE_URL = getApiBaseUrl();
+import { API_BASE_URL } from '../utils/api';
 
 type ReceiptItem = {
   name: string;
@@ -90,6 +70,7 @@ export default function ReceiptFlow() {
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const router = useRouter();
 
   const itemsTotal = useMemo(() => {
     if (!receipt) return 0;
@@ -224,6 +205,9 @@ export default function ReceiptFlow() {
       <View style={styles.header}>
         <Text style={styles.title}>レシート登録</Text>
         <Text style={styles.subtitle}>撮影・添付・確認を分けて進められます</Text>
+        <Pressable style={styles.linkButton} onPress={() => router.push('/receipts')}>
+          <Text style={styles.linkButtonText}>登録レシートの閲覧</Text>
+        </Pressable>
       </View>
 
       {step === 'select' && (
@@ -361,6 +345,19 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 14,
     color: '#6B7280',
+  },
+  linkButton: {
+    marginTop: 12,
+    alignSelf: 'flex-start',
+    backgroundColor: '#EEF2FF',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+  },
+  linkButtonText: {
+    color: '#4338CA',
+    fontSize: 13,
+    fontWeight: '600',
   },
   card: {
     backgroundColor: '#FFFFFF',
