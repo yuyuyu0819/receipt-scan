@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { API_BASE_URL } from '../utils/api';
+import { useSession } from '../context/SessionContext';
 
 type ReceiptItem = {
   name: string;
@@ -71,6 +72,7 @@ export default function ReceiptFlow() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
+  const { user } = useSession();
 
   const itemsTotal = useMemo(() => {
     if (!receipt) return 0;
@@ -169,9 +171,14 @@ export default function ReceiptFlow() {
 
   const handleRegister = async () => {
     if (!receipt) return;
+    if (!user) {
+      Alert.alert('エラー', 'ログイン情報がありません');
+      return;
+    }
 
     try {
       const payload = {
+        useId: user.id,
         store: receipt.store,
         date: receipt.date,
         total: Number(receipt.total || 0),
