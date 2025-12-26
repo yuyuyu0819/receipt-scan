@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
   ScrollView,
   SectionList,
@@ -109,6 +110,7 @@ export default function ReceiptsScreen() {
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [selectedDate, setSelectedDate] = useState(() => formatDate(new Date()));
+  const [selectedReceipt, setSelectedReceipt] = useState<ReceiptRecord | null>(null);
 
   const fetchReceipts = useCallback(async () => {
     if (!user) return;
@@ -182,19 +184,36 @@ export default function ReceiptsScreen() {
     return days;
   }, [calendarMonth]);
 
-  const selectedReceipts = useMemo(() => {
-    return receipts
-      .filter((receipt) => {
-        const parsed = parseReceiptDate(getReceiptDateValue(receipt));
-        if (!parsed) return false;
-        return formatDate(parsed) === selectedDate;
-      })
-      .sort((a, b) => {
-        const aDate = parseReceiptDate(getReceiptDateValue(a))?.getTime() ?? 0;
-        const bDate = parseReceiptDate(getReceiptDateValue(b))?.getTime() ?? 0;
-        return bDate - aDate;
-      });
-  }, [receipts, selectedDate]);
+  const receiptsByDate = useMemo(() => {
+    const map = new Map<string, ReceiptRecord[]>();
+    receipts.forEach((receipt) => {
+      const parsed = parseReceiptDate(getReceiptDateValue(receipt));
+      if (!parsed) return;
+      const key = formatDate(parsed);
+      if (!map.has(key)) {
+        map.set(key, []);
+      }
+      map.get(key)?.push(receipt);
+    });
+
+    map.forEach((value, key) => {
+      map.set(
+        key,
+        value.sort((a, b) => {
+          const aDate = parseReceiptDate(getReceiptDateValue(a))?.getTime() ?? 0;
+          const bDate = parseReceiptDate(getReceiptDateValue(b))?.getTime() ?? 0;
+          return bDate - aDate;
+        })
+      );
+    });
+
+    return map;
+  }, [receipts]);
+
+  const selectedReceipts = useMemo(() => receiptsByDate.get(selectedDate) ?? [], [
+    receiptsByDate,
+    selectedDate,
+  ]);
 
   const handleMonthChange = (direction: -1 | 1) => {
     setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + direction, 1));
@@ -309,16 +328,27 @@ export default function ReceiptsScreen() {
                 new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day)
               );
               const isSelected = dateValue === selectedDate;
+              const dayReceipts = receiptsByDate.get(dateValue) ?? [];
               return (
-                <Pressable
-                  key={`day-${day}`}
-                  style={[styles.calendarCell, isSelected && styles.calendarCellActive]}
-                  onPress={() => setSelectedDate(dateValue)}
-                >
-                  <Text style={[styles.calendarCellText, isSelected && styles.calendarCellTextActive]}>
-                    {day}
-                  </Text>
-                </Pressable>
+                <View key={`day-${day}`} style={[styles.calendarCell, isSelected && styles.calendarCellActive]}>
+                  <Pressable style={styles.calendarDayButton} onPress={() => setSelectedDate(dateValue)}>
+                    <Text style={[styles.calendarCellText, isSelected && styles.calendarCellTextActive]}>
+                      {day}
+                    </Text>
+                  </Pressable>
+                  {dayReceipts.map((receipt, receiptIndex) => (
+                    <Pressable
+                      key={`${receipt.id ?? receiptIndex}`}
+                      style={styles.calendarReceiptPill}
+                      onPress={() => setSelectedReceipt(receipt)}
+                    >
+                      <Text style={styles.calendarReceiptText} numberOfLines={1}>
+                        {receipt.store ?? receipt.storeName ?? '店舗名未登録'}
+                      </Text>
+                      <Text style={styles.calendarReceiptAmount}>{formatTotal(receipt)}</Text>
+                    </Pressable>
+                  ))}
+                </View>
               );
             })}
           </View>
@@ -327,17 +357,42 @@ export default function ReceiptsScreen() {
             <Text style={styles.selectedTitle}>{selectedDate} のレシート</Text>
             {selectedReceipts.length === 0 && <Text style={styles.emptyText}>レシートがありません。</Text>}
             {selectedReceipts.map((receipt, index) => (
-              <View key={`${receipt.id ?? index}`} style={styles.card}>
+              <Pressable
+                key={`${receipt.id ?? index}`}
+                style={styles.card}
+                onPress={() => setSelectedReceipt(receipt)}
+              >
                 <View>
                   <Text style={styles.cardTitle}>{receipt.store ?? receipt.storeName ?? '店舗名未登録'}</Text>
                   <Text style={styles.cardSubtitle}>{getReceiptDateValue(receipt)}</Text>
                 </View>
                 <Text style={styles.cardAmount}>{formatTotal(receipt)}</Text>
-              </View>
+              </Pressable>
             ))}
           </View>
         </ScrollView>
       )}
+
+      <Modal transparent animationType="fade" visible={!!selectedReceipt} onRequestClose={() => setSelectedReceipt(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>レシート詳細</Text>
+            <Text style={styles.modalStore}>
+              {selectedReceipt?.store ?? selectedReceipt?.storeName ?? '店舗名未登録'}
+            </Text>
+            <Text style={styles.modalDate}>{selectedReceipt ? getReceiptDateValue(selectedReceipt) : ''}</Text>
+            <View style={styles.modalAmountRow}>
+              <Text style={styles.modalAmountLabel}>合計</Text>
+              <Text style={styles.modalAmountValue}>
+                {selectedReceipt ? formatTotal(selectedReceipt) : ''}
+              </Text>
+            </View>
+            <Pressable style={styles.modalCloseButton} onPress={() => setSelectedReceipt(null)}>
+              <Text style={styles.modalCloseText}>閉じる</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -515,20 +570,54 @@ const styles = StyleSheet.create({
   calendarCell: {
     width: '14.28%',
     aspectRatio: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
     borderRadius: 8,
     marginVertical: 4,
+    padding: 4,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#1F2937',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 1,
   },
   calendarCellActive: {
-    backgroundColor: '#4F46E5',
+    borderWidth: 1.5,
+    borderColor: '#4F46E5',
+  },
+  calendarDayButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    backgroundColor: '#EEF2FF',
   },
   calendarCellText: {
     fontSize: 12,
-    color: '#374151',
+    color: '#4338CA',
+    fontWeight: '600',
   },
   calendarCellTextActive: {
-    color: '#FFFFFF',
+    color: '#312E81',
+  },
+  calendarReceiptPill: {
+    marginTop: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  calendarReceiptText: {
+    fontSize: 10,
+    color: '#0F172A',
+    fontWeight: '600',
+  },
+  calendarReceiptAmount: {
+    fontSize: 10,
+    color: '#4F46E5',
     fontWeight: '700',
   },
   selectedList: {
@@ -539,5 +628,67 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     marginBottom: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 4,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  modalStore: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  modalDate: {
+    marginTop: 6,
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  modalAmountRow: {
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalAmountLabel: {
+    fontSize: 13,
+    color: '#4338CA',
+    fontWeight: '600',
+  },
+  modalAmountValue: {
+    fontSize: 16,
+    color: '#4338CA',
+    fontWeight: '700',
+  },
+  modalCloseButton: {
+    marginTop: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#4F46E5',
+    alignItems: 'center',
+  },
+  modalCloseText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
