@@ -23,6 +23,7 @@ export default function RootLayout() {
             name="receipts"
             options={{ title: '登録レシート', headerBackTitle: '戻る' }}
           />
+          <Stack.Screen name="register" options={{ title: '新規登録', headerBackTitle: '戻る' }} />
           <Stack.Screen name="+not-found" />
         </Stack>
         <StatusBar style="auto" />

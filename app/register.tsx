@@ -1,37 +1,74 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSession } from '../context/SessionContext';
+import { API_BASE_URL } from '../utils/api';
 
-export default function LoginScreen() {
-  const { signIn, isAuthenticating } = useSession();
+export default function RegisterScreen() {
   const router = useRouter();
-  const [username, setUsername] = useState('');
+  const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleLogin = async () => {
+  const handleRegister = async () => {
+    setIsSubmitting(true);
     setErrorMessage(null);
-    const result = await signIn(username.trim(), password);
-    if (!result.ok) {
-      setErrorMessage(result.message ?? 'ログインに失敗しました');
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userId.trim(),
+          password,
+          email: email.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Register API error: ${response.status}`);
+      }
+
+      Alert.alert('登録完了', 'ログイン画面からログインしてください');
+      router.replace('/');
+    } catch (error) {
+      console.error('登録エラー:', error);
+      setErrorMessage('登録に失敗しました');
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  const isDisabled = !userId || !password || !email || isSubmitting;
 
   return (
     <View style={styles.page}>
       <View style={styles.card}>
-        <Text style={styles.title}>ログイン</Text>
-        <Text style={styles.description}>ユーザー名とパスワードを入力してください。</Text>
+        <Text style={styles.title}>新規登録</Text>
+        <Text style={styles.description}>ユーザーID・パスワード・メールアドレスを入力してください。</Text>
 
         <View style={styles.field}>
-          <Text style={styles.label}>ユーザー名</Text>
+          <Text style={styles.label}>ユーザーID</Text>
           <TextInput
             style={styles.input}
-            value={username}
-            onChangeText={setUsername}
-            placeholder="username"
+            value={userId}
+            onChangeText={setUserId}
+            placeholder="user_id"
             autoCapitalize="none"
+          />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>メールアドレス</Text>
+          <TextInput
+            style={styles.input}
+            value={email}
+            onChangeText={setEmail}
+            placeholder="mail@example.com"
+            autoCapitalize="none"
+            keyboardType="email-address"
           />
         </View>
 
@@ -48,20 +85,16 @@ export default function LoginScreen() {
 
         {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
 
-        <Pressable
-          style={[styles.button, (!username || !password || isAuthenticating) && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={!username || !password || isAuthenticating}
-        >
-          {isAuthenticating ? (
+        <Pressable style={[styles.button, isDisabled && styles.buttonDisabled]} onPress={handleRegister} disabled={isDisabled}>
+          {isSubmitting ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.buttonText}>ログイン</Text>
+            <Text style={styles.buttonText}>登録する</Text>
           )}
         </Pressable>
 
-        <Pressable style={styles.linkButton} onPress={() => router.push('/register')}>
-          <Text style={styles.linkButtonText}>新規登録</Text>
+        <Pressable style={styles.linkButton} onPress={() => router.back()}>
+          <Text style={styles.linkButtonText}>ログイン画面に戻る</Text>
         </Pressable>
       </View>
     </View>
