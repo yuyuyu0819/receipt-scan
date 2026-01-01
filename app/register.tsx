@@ -117,7 +117,7 @@ export default function RegisterScreen() {
             style={styles.input}
             value={userId}
             onChangeText={setUserId}
-            placeholder="user_id"
+            placeholder="ユーザーID"
             autoCapitalize="none"
           />
         </View>
