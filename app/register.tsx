@@ -138,41 +138,52 @@ export default function RegisterScreen() {
 
         <View style={styles.field}>
           <Text style={styles.label}>reCAPTCHA</Text>
-          <View style={styles.recaptchaBox}>
-            <WebView
-              ref={recaptchaWebViewRef}
-              originWhitelist={['*']}
-              source={{ html: recaptchaHtml }}
-              javaScriptEnabled
-              onMessage={(event) => {
-                try {
-                  const data = JSON.parse(event.nativeEvent.data);
-                  if (data.type === 'token') {
-                    setRecaptchaToken(data.token);
-                    setRecaptchaMessage('reCAPTCHAを確認しました');
-                    return;
+          <View style={styles.recaptchaCard}>
+            <View style={styles.recaptchaBox}>
+              <WebView
+                ref={recaptchaWebViewRef}
+                originWhitelist={['*']}
+                source={{ html: recaptchaHtml }}
+                javaScriptEnabled
+                onMessage={(event) => {
+                  try {
+                    const data = JSON.parse(event.nativeEvent.data);
+                    if (data.type === 'token') {
+                      setRecaptchaToken(data.token);
+                      setRecaptchaMessage('reCAPTCHAを確認しました');
+                      return;
+                    }
+                    if (data.type === 'error') {
+                      setRecaptchaToken(null);
+                      setRecaptchaMessage('reCAPTCHAの実行に失敗しました。');
+                    }
+                  } catch (error) {
+                    console.error('reCAPTCHA message error:', error);
                   }
-                  if (data.type === 'error') {
-                    setRecaptchaToken(null);
-                    setRecaptchaMessage('reCAPTCHAの実行に失敗しました。');
-                  }
-                } catch (error) {
-                  console.error('reCAPTCHA message error:', error);
-                }
-              }}
-            />
+                }}
+              />
+            </View>
+            <View style={styles.recaptchaActions}>
+              <Text style={styles.recaptchaHint}>ボット対策のため確認をお願いします。</Text>
+              <Pressable
+                style={[styles.recaptchaButton, !recaptchaWebViewRef.current && styles.buttonDisabled]}
+                onPress={() => {
+                  setRecaptchaMessage(null);
+                  setRecaptchaToken(null);
+                  recaptchaWebViewRef.current?.injectJavaScript(
+                    'window.executeRecaptcha && window.executeRecaptcha(); true;'
+                  );
+                }}
+              >
+                <Text style={styles.recaptchaButtonText}>reCAPTCHAを実行</Text>
+              </Pressable>
+            </View>
+            {recaptchaMessage && (
+              <View style={styles.recaptchaStatusPill}>
+                <Text style={styles.recaptchaStatus}>{recaptchaMessage}</Text>
+              </View>
+            )}
           </View>
-          <Pressable
-            style={[styles.recaptchaButton, !recaptchaWebViewRef.current && styles.buttonDisabled]}
-            onPress={() => {
-              setRecaptchaMessage(null);
-              setRecaptchaToken(null);
-              recaptchaWebViewRef.current?.injectJavaScript('window.executeRecaptcha && window.executeRecaptcha(); true;');
-            }}
-          >
-            <Text style={styles.recaptchaButtonText}>reCAPTCHAを実行</Text>
-          </Pressable>
-          {recaptchaMessage && <Text style={styles.recaptchaStatus}>{recaptchaMessage}</Text>}
         </View>
 
         {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
@@ -269,25 +280,63 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4338CA',
   },
-  recaptchaBox: {
-    height: 84,
-    width: '100%',
-  },
-  recaptchaStatus: {
+  recaptchaCard: {
     marginTop: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    gap: 12,
+  },
+  recaptchaBox: {
+    height: 92,
+    width: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+  },
+  recaptchaActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  recaptchaHint: {
+    flex: 1,
     fontSize: 12,
-    color: '#2563EB',
+    color: '#64748B',
   },
   recaptchaButton: {
-    marginTop: 12,
-    alignItems: 'center',
     paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: '#E5E7EB',
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    backgroundColor: '#111827',
+    alignItems: 'center',
+    shadowColor: '#111827',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   recaptchaButtonText: {
-    fontSize: 13,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+  },
+  recaptchaStatusPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#DBEAFE',
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  recaptchaStatus: {
+    fontSize: 12,
+    color: '#1D4ED8',
     fontWeight: '600',
-    color: '#111827',
   },
 });
