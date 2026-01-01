@@ -17,8 +17,6 @@ export default function RegisterScreen() {
   const recaptchaWebViewRef = useRef<WebView>(null);
 
   const trimmedUserId = userId.trim();
-  const parsedUserId = Number(trimmedUserId);
-  const isUserIdValid = Number.isInteger(parsedUserId) && parsedUserId > 0;
 
   const recaptchaHtml = useMemo(() => {
     return `<!DOCTYPE html>
@@ -62,12 +60,6 @@ export default function RegisterScreen() {
     setErrorMessage(null);
     setRecaptchaMessage(null);
 
-    if (!isUserIdValid) {
-      setErrorMessage('ユーザーIDは数値で入力してください');
-      setIsSubmitting(false);
-      return;
-    }
-
     if (!recaptchaToken) {
       setErrorMessage('reCAPTCHAの確認が必要です');
       setIsSubmitting(false);
@@ -81,7 +73,7 @@ export default function RegisterScreen() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: parsedUserId,
+          userId: trimmedUserId,
           password,
           email: email.trim(),
           recaptchaToken,
@@ -102,7 +94,7 @@ export default function RegisterScreen() {
     }
   };
 
-  const isDisabled = !trimmedUserId || !password || !email || !recaptchaToken || isSubmitting || !isUserIdValid;
+  const isDisabled = !trimmedUserId || !password || !email || !recaptchaToken || isSubmitting;
 
   return (
     <View style={styles.page}>
