@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { WebView } from 'react-native-webview';
 import { API_BASE_URL } from '../utils/api';
 
 export default function RegisterScreen() {
@@ -8,22 +9,83 @@ export default function RegisterScreen() {
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [recaptchaMessage, setRecaptchaMessage] = useState<string | null>(null);
+  const recaptchaSiteKey = process.env.EXPO_PUBLIC_RECAPTCHA_SITE_KEY;
+
+  const trimmedUserId = userId.trim();
+  const parsedUserId = Number(trimmedUserId);
+  const isUserIdValid = Number.isInteger(parsedUserId) && parsedUserId > 0;
+
+  const recaptchaHtml = useMemo(() => {
+    if (!recaptchaSiteKey) return '';
+    return `<!DOCTYPE html>
+      <html lang="ja">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <script src="https://www.google.com/recaptcha/api.js?onload=onloadCallback&render=explicit"></script>
+          <style>
+            body { margin: 0; padding: 0; display: flex; justify-content: center; }
+            #recaptcha { margin-top: 8px; }
+          </style>
+        </head>
+        <body>
+          <div id="recaptcha"></div>
+          <script>
+            function handleToken(token) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'token', token }));
+            }
+            function handleExpired() {
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'expired' }));
+            }
+            function handleError() {
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error' }));
+            }
+            function onloadCallback() {
+              grecaptcha.render('recaptcha', {
+                sitekey: '${recaptchaSiteKey}',
+                callback: handleToken,
+                'expired-callback': handleExpired,
+                'error-callback': handleError
+              });
+            }
+            window.onloadCallback = onloadCallback;
+          </script>
+        </body>
+      </html>`;
+  }, [recaptchaSiteKey]);
 
   const handleRegister = async () => {
     setIsSubmitting(true);
     setErrorMessage(null);
+    setRecaptchaMessage(null);
+
+    if (!isUserIdValid) {
+      setErrorMessage('ユーザーIDは数値で入力してください');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!recaptchaToken) {
+      setErrorMessage('reCAPTCHAの確認が必要です');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      const response = await fetch(`${API_BASE_URL}/api/register`, {
+      const response = await fetch(`${API_BASE_URL}/api/user/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: userId.trim(),
+          userId: parsedUserId,
           password,
           email: email.trim(),
+          recaptchaToken,
         }),
       });
 
@@ -41,7 +103,7 @@ export default function RegisterScreen() {
     }
   };
 
-  const isDisabled = !userId || !password || !email || isSubmitting;
+  const isDisabled = !trimmedUserId || !password || !email || !recaptchaToken || isSubmitting || !isUserIdValid;
 
   return (
     <View style={styles.page}>
@@ -81,6 +143,45 @@ export default function RegisterScreen() {
             placeholder="password"
             secureTextEntry
           />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>reCAPTCHA</Text>
+          {recaptchaSiteKey ? (
+            <View style={styles.recaptchaBox}>
+              <WebView
+                originWhitelist={['*']}
+                source={{ html: recaptchaHtml }}
+                javaScriptEnabled
+                onMessage={(event) => {
+                  try {
+                    const data = JSON.parse(event.nativeEvent.data);
+                    if (data.type === 'token') {
+                      setRecaptchaToken(data.token);
+                      setRecaptchaMessage('reCAPTCHAを確認しました');
+                      return;
+                    }
+                    if (data.type === 'expired') {
+                      setRecaptchaToken(null);
+                      setRecaptchaMessage('reCAPTCHAの有効期限が切れました。もう一度実行してください。');
+                      return;
+                    }
+                    if (data.type === 'error') {
+                      setRecaptchaToken(null);
+                      setRecaptchaMessage('reCAPTCHAの読み込みに失敗しました。');
+                    }
+                  } catch (error) {
+                    console.error('reCAPTCHA message error:', error);
+                  }
+                }}
+              />
+            </View>
+          ) : (
+            <Text style={styles.recaptchaWarning}>
+              reCAPTCHAのサイトキーが設定されていません（EXPO_PUBLIC_RECAPTCHA_SITE_KEY）。
+            </Text>
+          )}
+          {recaptchaMessage && <Text style={styles.recaptchaStatus}>{recaptchaMessage}</Text>}
         </View>
 
         {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
@@ -176,5 +277,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#4338CA',
+  },
+  recaptchaBox: {
+    height: 84,
+    width: '100%',
+  },
+  recaptchaWarning: {
+    fontSize: 12,
+    color: '#B45309',
+  },
+  recaptchaStatus: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#2563EB',
   },
 });

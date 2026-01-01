@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { useSession } from '../context/SessionContext';
 
 export default function LoginScreen() {
@@ -60,7 +60,7 @@ export default function LoginScreen() {
           )}
         </Pressable>
 
-        <Pressable style={styles.linkButton} onPress={() => router.push('/register')}>
+        <Pressable style={styles.linkButton} onPress={() => router.push('/register' as Href)}>
           <Text style={styles.linkButtonText}>新規登録</Text>
         </Pressable>
       </View>
