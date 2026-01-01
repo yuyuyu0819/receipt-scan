@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { WebView } from 'react-native-webview';
 import { API_BASE_URL } from '../utils/api';
 
 export default function RegisterScreen() {
@@ -8,22 +9,82 @@ export default function RegisterScreen() {
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [recaptchaMessage, setRecaptchaMessage] = useState<string | null>(null);
+  const recaptchaSiteKey = process.env.EXPO_PUBLIC_RECAPTCHA_SITE_KEY ?? '6LelzDosAAAAAEY0zjnsUjdplEJdAT2QAZkJc1Xx';
+  const recaptchaWebViewRef = useRef<WebView>(null);
+
+  const trimmedUserId = userId.trim();
+  const parsedUserId = Number(trimmedUserId);
+  const isUserIdValid = Number.isInteger(parsedUserId) && parsedUserId > 0;
+
+  const recaptchaHtml = useMemo(() => {
+    return `<!DOCTYPE html>
+      <html lang="ja">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <script src="https://www.google.com/recaptcha/enterprise.js?render=${recaptchaSiteKey}"></script>
+          <style>
+            body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+            #status { font-size: 12px; color: #6B7280; padding: 8px 12px; }
+          </style>
+        </head>
+        <body>
+          <div id="status">reCAPTCHAの準備中です。</div>
+          <script>
+            const statusEl = document.getElementById('status');
+            function updateStatus(message) {
+              statusEl.textContent = message;
+            }
+            updateStatus('reCAPTCHAの準備ができました。');
+            async function executeRecaptcha() {
+              try {
+                updateStatus('reCAPTCHAを実行しています...');
+                const token = await grecaptcha.enterprise.execute('${recaptchaSiteKey}', { action: 'LOGIN' });
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'token', token }));
+                updateStatus('reCAPTCHAを確認しました。');
+              } catch (error) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error' }));
+                updateStatus('reCAPTCHAの実行に失敗しました。');
+              }
+            }
+            window.executeRecaptcha = executeRecaptcha;
+          </script>
+        </body>
+      </html>`;
+  }, [recaptchaSiteKey]);
 
   const handleRegister = async () => {
     setIsSubmitting(true);
     setErrorMessage(null);
+    setRecaptchaMessage(null);
+
+    if (!isUserIdValid) {
+      setErrorMessage('ユーザーIDは数値で入力してください');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!recaptchaToken) {
+      setErrorMessage('reCAPTCHAの確認が必要です');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      const response = await fetch(`${API_BASE_URL}/api/register`, {
+      const response = await fetch(`${API_BASE_URL}/api/user/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: userId.trim(),
+          userId: parsedUserId,
           password,
           email: email.trim(),
+          recaptchaToken,
         }),
       });
 
@@ -41,7 +102,7 @@ export default function RegisterScreen() {
     }
   };
 
-  const isDisabled = !userId || !password || !email || isSubmitting;
+  const isDisabled = !trimmedUserId || !password || !email || !recaptchaToken || isSubmitting || !isUserIdValid;
 
   return (
     <View style={styles.page}>
@@ -81,6 +142,45 @@ export default function RegisterScreen() {
             placeholder="password"
             secureTextEntry
           />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>reCAPTCHA</Text>
+          <View style={styles.recaptchaBox}>
+            <WebView
+              ref={recaptchaWebViewRef}
+              originWhitelist={['*']}
+              source={{ html: recaptchaHtml }}
+              javaScriptEnabled
+              onMessage={(event) => {
+                try {
+                  const data = JSON.parse(event.nativeEvent.data);
+                  if (data.type === 'token') {
+                    setRecaptchaToken(data.token);
+                    setRecaptchaMessage('reCAPTCHAを確認しました');
+                    return;
+                  }
+                  if (data.type === 'error') {
+                    setRecaptchaToken(null);
+                    setRecaptchaMessage('reCAPTCHAの実行に失敗しました。');
+                  }
+                } catch (error) {
+                  console.error('reCAPTCHA message error:', error);
+                }
+              }}
+            />
+          </View>
+          <Pressable
+            style={[styles.recaptchaButton, !recaptchaWebViewRef.current && styles.buttonDisabled]}
+            onPress={() => {
+              setRecaptchaMessage(null);
+              setRecaptchaToken(null);
+              recaptchaWebViewRef.current?.injectJavaScript('window.executeRecaptcha && window.executeRecaptcha(); true;');
+            }}
+          >
+            <Text style={styles.recaptchaButtonText}>reCAPTCHAを実行</Text>
+          </Pressable>
+          {recaptchaMessage && <Text style={styles.recaptchaStatus}>{recaptchaMessage}</Text>}
         </View>
 
         {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
@@ -176,5 +276,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#4338CA',
+  },
+  recaptchaBox: {
+    height: 84,
+    width: '100%',
+  },
+  recaptchaStatus: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#2563EB',
+  },
+  recaptchaButton: {
+    marginTop: 12,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#E5E7EB',
+  },
+  recaptchaButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#111827',
   },
 });
