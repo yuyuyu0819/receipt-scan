@@ -3,21 +3,21 @@ import { API_BASE_URL } from '../utils/api';
 
 export type SessionUser = {
   id: number;
-  username: string;
+  userName: string;
 };
 
 type SessionContextValue = {
   user: SessionUser | null;
   isAuthenticating: boolean;
-  signIn: (username: string, password: string) => Promise<{ ok: boolean; message?: string }>;
+  signIn: (userName: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   signOut: () => void;
 };
 
 const SessionContext = createContext<SessionContextValue | undefined>(undefined);
 
-const parseUserFromResponse = (data: unknown, username: string): SessionUser | null => {
+const parseUserFromResponse = (data: unknown, userName: string): SessionUser | null => {
   if (!data || typeof data !== 'object') {
-    return { id: 0, username };
+    return { id: 0, userName };
   }
 
   const record = data as Record<string, unknown>;
@@ -25,16 +25,20 @@ const parseUserFromResponse = (data: unknown, username: string): SessionUser | n
   const idValue = candidate.id ?? candidate.userId ?? candidate.useId;
   const id = Number(idValue);
   const resolvedId = Number.isFinite(id) ? id : 0;
-  const resolvedUsername =
-    typeof candidate.username === 'string'
-      ? candidate.username
-      : typeof record.username === 'string'
-        ? record.username
-        : username;
+  const resolvedUserName =
+    typeof candidate.userName === 'string'
+      ? candidate.userName
+      : typeof candidate.username === 'string'
+        ? candidate.username
+      : typeof record.userName === 'string'
+        ? record.userName
+        : typeof record.username === 'string'
+          ? record.username
+        : userName;
 
   return {
     id: resolvedId,
-    username: resolvedUsername,
+    userName: resolvedUserName,
   };
 };
 
@@ -42,7 +46,7 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
   const [user, setUser] = useState<SessionUser | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  const signIn = async (username: string, password: string) => {
+  const signIn = async (userName: string, password: string) => {
     setIsAuthenticating(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/login`, {
@@ -50,7 +54,7 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ userName, password }),
       });
 
       if (!response.ok) {
@@ -58,7 +62,7 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
       }
 
       const data = await response.json().catch(() => ({}));
-      const nextUser = parseUserFromResponse(data, username);
+      const nextUser = parseUserFromResponse(data, userName);
       if (!nextUser) {
         return { ok: false, message: 'ユーザー情報を取得できませんでした' };
       }

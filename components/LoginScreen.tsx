@@ -6,13 +6,13 @@ import { useSession } from '../context/SessionContext';
 export default function LoginScreen() {
   const { signIn, isAuthenticating } = useSession();
   const router = useRouter();
-  const [username, setUsername] = useState('');
+  const [userName, setUserName] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleLogin = async () => {
     setErrorMessage(null);
-    const result = await signIn(username.trim(), password);
+    const result = await signIn(userName.trim(), password);
     if (!result.ok) {
       setErrorMessage(result.message ?? 'ログインに失敗しました');
     }
@@ -28,8 +28,8 @@ export default function LoginScreen() {
           <Text style={styles.label}>ユーザー名</Text>
           <TextInput
             style={styles.input}
-            value={username}
-            onChangeText={setUsername}
+            value={userName}
+            onChangeText={setUserName}
             placeholder="username"
             autoCapitalize="none"
           />
@@ -49,9 +49,9 @@ export default function LoginScreen() {
         {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
 
         <Pressable
-          style={[styles.button, (!username || !password || isAuthenticating) && styles.buttonDisabled]}
+          style={[styles.button, (!userName || !password || isAuthenticating) && styles.buttonDisabled]}
           onPress={handleLogin}
-          disabled={!username || !password || isAuthenticating}
+          disabled={!userName || !password || isAuthenticating}
         >
           {isAuthenticating ? (
             <ActivityIndicator color="#FFFFFF" />
