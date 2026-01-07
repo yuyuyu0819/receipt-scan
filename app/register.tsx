@@ -5,13 +5,13 @@ import { API_BASE_URL } from '../utils/api';
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const [userId, setUserId] = useState('');
+  const [userName, setUserName] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const trimmedUserId = userId.trim();
+  const trimmedUserName = userName.trim();
 
   const handleRegister = async () => {
     setIsSubmitting(true);
@@ -24,7 +24,7 @@ export default function RegisterScreen() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: trimmedUserId,
+          userName: trimmedUserName,
           password,
           email: email.trim(),
         }),
@@ -44,7 +44,7 @@ export default function RegisterScreen() {
     }
   };
 
-  const isDisabled = !trimmedUserId || !password || !email || isSubmitting;
+  const isDisabled = !trimmedUserName || !password || !email || isSubmitting;
 
   return (
     <View style={styles.page}>
@@ -53,12 +53,12 @@ export default function RegisterScreen() {
         <Text style={styles.description}>ユーザーID・パスワード・メールアドレスを入力してください。</Text>
 
         <View style={styles.field}>
-          <Text style={styles.label}>ユーザーID</Text>
+          <Text style={styles.label}>ユーザー名</Text>
           <TextInput
             style={styles.input}
-            value={userId}
-            onChangeText={setUserId}
-            placeholder="user_id"
+            value={userName}
+            onChangeText={setUserName}
+            placeholder="username"
             autoCapitalize="none"
           />
         </View>
