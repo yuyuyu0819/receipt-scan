@@ -12,7 +12,7 @@ export default function ReceiptMenu() {
       <View style={styles.card}>
         <Text style={styles.title}>メニュー</Text>
         <Text style={styles.description}>
-          {user ? `${user.username}さん、利用したい機能を選択してください。` : '利用したい機能を選択してください。'}
+          {user ? `${user.userName}さん、利用したい機能を選択してください。` : '利用したい機能を選択してください。'}
         </Text>
 
         <Pressable style={[styles.button, styles.primary]} onPress={() => router.push('/receipts' as Href)}>
