@@ -178,7 +178,7 @@ export default function ReceiptFlow() {
 
     try {
       const payload = {
-        useId: user.id,
+        userId: user.id,
         store: receipt.store,
         date: receipt.date,
         total: Number(receipt.total || 0),

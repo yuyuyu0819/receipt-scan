@@ -50,7 +50,7 @@ export default function RegisterScreen() {
     <View style={styles.page}>
       <View style={styles.card}>
         <Text style={styles.title}>新規登録</Text>
-        <Text style={styles.description}>ユーザーID・パスワード・メールアドレスを入力してください。</Text>
+        <Text style={styles.description}>ユーザー名・パスワード・メールアドレスを入力してください。</Text>
 
         <View style={styles.field}>
           <Text style={styles.label}>ユーザー名</Text>
