@@ -1,5 +1,5 @@
 import LoginScreen from '../components/LoginScreen';
-import ReceiptFlow from '../components/ReceiptFlow';
+import ReceiptMenu from '../components/ReceiptMenu';
 import { useSession } from '../context/SessionContext';
 
 export default function IndexScreen() {
@@ -9,5 +9,5 @@ export default function IndexScreen() {
     return <LoginScreen />;
   }
 
-  return <ReceiptFlow />;
+  return <ReceiptMenu />;
 }
