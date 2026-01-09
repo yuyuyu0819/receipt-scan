@@ -339,8 +339,15 @@ export default function ReceiptsScreen() {
           </View>
 
           <View style={styles.calendarWeekdays}>
-            {weekDayLabels.map((label) => (
-              <Text key={label} style={styles.calendarWeekdayText}>
+            {weekDayLabels.map((label, index) => (
+              <Text
+                key={label}
+                style={[
+                  styles.calendarWeekdayText,
+                  index === 5 ? styles.calendarSaturdayText : null,
+                  index === 6 ? styles.calendarSundayText : null,
+                ]}
+              >
                 {label}
               </Text>
             ))}
@@ -361,6 +368,7 @@ export default function ReceiptsScreen() {
               );
               const isSelected = dateValue === selectedDate;
               const dayReceipts = receiptsByDate.get(dateValue) ?? [];
+              const dayOfWeekIndex = index % 7;
               return (
                 <View
                   key={`day-${day}`}
@@ -371,7 +379,14 @@ export default function ReceiptsScreen() {
                   ]}
                 >
                   <Pressable style={styles.calendarDayButton} onPress={() => setSelectedDate(dateValue)}>
-                    <Text style={[styles.calendarCellText, isSelected && styles.calendarCellTextActive]}>
+                    <Text
+                      style={[
+                        styles.calendarCellText,
+                        dayOfWeekIndex === 5 ? styles.calendarSaturdayText : null,
+                        dayOfWeekIndex === 6 ? styles.calendarSundayText : null,
+                        isSelected && styles.calendarCellTextActive,
+                      ]}
+                    >
                       {day}
                     </Text>
                   </Pressable>
@@ -397,34 +412,36 @@ export default function ReceiptsScreen() {
 
       <Modal transparent animationType="fade" visible={!!selectedReceipt} onRequestClose={() => setSelectedReceipt(null)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>レシート詳細</Text>
-            <Text style={styles.modalStore}>
-              {selectedReceipt?.store ?? selectedReceipt?.storeName ?? '店舗名未登録'}
-            </Text>
-            <Text style={styles.modalDate}>{selectedReceipt ? getReceiptDateValue(selectedReceipt) : ''}</Text>
-            <View style={styles.modalAmountRow}>
-              <Text style={styles.modalAmountLabel}>合計</Text>
-              <Text style={styles.modalAmountValue}>
-                {selectedReceipt ? formatTotal(selectedReceipt) : ''}
+          <View style={[styles.modalCard, { maxHeight: windowHeight * 0.85 }]}>
+            <ScrollView contentContainerStyle={styles.modalScrollContent}>
+              <Text style={styles.modalTitle}>レシート詳細</Text>
+              <Text style={styles.modalStore}>
+                {selectedReceipt?.store ?? selectedReceipt?.storeName ?? '店舗名未登録'}
               </Text>
-            </View>
-            <View style={styles.modalItems}>
-              <Text style={styles.modalSectionTitle}>購入品</Text>
-              {selectedReceipt?.items && selectedReceipt.items.length > 0 ? (
-                selectedReceipt.items.map((item, index) => (
-                  <View key={`${item.name ?? 'item'}-${index}`} style={styles.modalItemRow}>
-                    <Text style={styles.modalItemName}>{item.name ?? '品名未登録'}</Text>
-                    <Text style={styles.modalItemPrice}>{formatItemPrice(item.price)}</Text>
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.modalEmptyText}>購入品がありません。</Text>
-              )}
-            </View>
-            <Pressable style={styles.modalCloseButton} onPress={() => setSelectedReceipt(null)}>
-              <Text style={styles.modalCloseText}>閉じる</Text>
-            </Pressable>
+              <Text style={styles.modalDate}>{selectedReceipt ? getReceiptDateValue(selectedReceipt) : ''}</Text>
+              <View style={styles.modalAmountRow}>
+                <Text style={styles.modalAmountLabel}>合計</Text>
+                <Text style={styles.modalAmountValue}>
+                  {selectedReceipt ? formatTotal(selectedReceipt) : ''}
+                </Text>
+              </View>
+              <View style={styles.modalItems}>
+                <Text style={styles.modalSectionTitle}>購入品</Text>
+                {selectedReceipt?.items && selectedReceipt.items.length > 0 ? (
+                  selectedReceipt.items.map((item, index) => (
+                    <View key={`${item.name ?? 'item'}-${index}`} style={styles.modalItemRow}>
+                      <Text style={styles.modalItemName}>{item.name ?? '品名未登録'}</Text>
+                      <Text style={styles.modalItemPrice}>{formatItemPrice(item.price)}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.modalEmptyText}>購入品がありません。</Text>
+                )}
+              </View>
+              <Pressable style={styles.modalCloseButton} onPress={() => setSelectedReceipt(null)}>
+                <Text style={styles.modalCloseText}>閉じる</Text>
+              </Pressable>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -612,7 +629,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     fontWeight: '700',
-    color: '#6B7280',
+    color: '#111827',
+  },
+  calendarSaturdayText: {
+    color: '#2563EB',
+  },
+  calendarSundayText: {
+    color: '#DC2626',
   },
   calendarCell: {
     width: '14.28%',
@@ -641,11 +664,11 @@ const styles = StyleSheet.create({
   },
   calendarCellText: {
     fontSize: 12,
-    color: '#4338CA',
+    color: '#111827',
     fontWeight: '600',
   },
   calendarCellTextActive: {
-    color: '#312E81',
+    fontWeight: '700',
   },
   calendarReceiptPill: {
     marginTop: 4,
@@ -681,6 +704,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 20,
     elevation: 4,
+  },
+  modalScrollContent: {
+    paddingBottom: 8,
   },
   modalTitle: {
     fontSize: 18,
