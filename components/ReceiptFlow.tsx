@@ -1,5 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -178,7 +178,7 @@ export default function ReceiptFlow() {
 
     try {
       const payload = {
-        useId: user.id,
+        userId: user.id,
         store: receipt.store,
         date: receipt.date,
         total: Number(receipt.total || 0),
@@ -212,7 +212,7 @@ export default function ReceiptFlow() {
       <View style={styles.header}>
         <Text style={styles.title}>レシート登録</Text>
         <Text style={styles.subtitle}>撮影・添付・確認を分けて進められます</Text>
-        <Pressable style={styles.linkButton} onPress={() => router.push('/receipts')}>
+        <Pressable style={styles.linkButton} onPress={() => router.push('/receipts' as Href)}>
           <Text style={styles.linkButtonText}>登録レシートの閲覧</Text>
         </Pressable>
       </View>

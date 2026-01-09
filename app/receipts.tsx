@@ -122,7 +122,7 @@ export default function ReceiptsScreen() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ useId: user.id }),
+        body: JSON.stringify({ userId: user.id }),
       });
 
       if (!response.ok) {

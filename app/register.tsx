@@ -5,23 +5,26 @@ import { API_BASE_URL } from '../utils/api';
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const [userId, setUserId] = useState('');
+  const [userName, setUserName] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const trimmedUserName = userName.trim();
+
   const handleRegister = async () => {
     setIsSubmitting(true);
     setErrorMessage(null);
+
     try {
-      const response = await fetch(`${API_BASE_URL}/api/register`, {
+      const response = await fetch(`${API_BASE_URL}/api/user/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: userId.trim(),
+          userName: trimmedUserName,
           password,
           email: email.trim(),
         }),
@@ -41,21 +44,21 @@ export default function RegisterScreen() {
     }
   };
 
-  const isDisabled = !userId || !password || !email || isSubmitting;
+  const isDisabled = !trimmedUserName || !password || !email || isSubmitting;
 
   return (
     <View style={styles.page}>
       <View style={styles.card}>
         <Text style={styles.title}>新規登録</Text>
-        <Text style={styles.description}>ユーザーID・パスワード・メールアドレスを入力してください。</Text>
+        <Text style={styles.description}>ユーザー名・パスワード・メールアドレスを入力してください。</Text>
 
         <View style={styles.field}>
-          <Text style={styles.label}>ユーザーID</Text>
+          <Text style={styles.label}>ユーザー名</Text>
           <TextInput
             style={styles.input}
-            value={userId}
-            onChangeText={setUserId}
-            placeholder="user_id"
+            value={userName}
+            onChangeText={setUserName}
+            placeholder="username"
             autoCapitalize="none"
           />
         </View>

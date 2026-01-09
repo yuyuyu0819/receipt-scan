@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { useSession } from '../context/SessionContext';
 
 export default function LoginScreen() {
   const { signIn, isAuthenticating } = useSession();
   const router = useRouter();
-  const [username, setUsername] = useState('');
+  const [userName, setUserName] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleLogin = async () => {
     setErrorMessage(null);
-    const result = await signIn(username.trim(), password);
+    const result = await signIn(userName.trim(), password);
     if (!result.ok) {
       setErrorMessage(result.message ?? 'ログインに失敗しました');
     }
@@ -28,8 +28,8 @@ export default function LoginScreen() {
           <Text style={styles.label}>ユーザー名</Text>
           <TextInput
             style={styles.input}
-            value={username}
-            onChangeText={setUsername}
+            value={userName}
+            onChangeText={setUserName}
             placeholder="username"
             autoCapitalize="none"
           />
@@ -49,9 +49,9 @@ export default function LoginScreen() {
         {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
 
         <Pressable
-          style={[styles.button, (!username || !password || isAuthenticating) && styles.buttonDisabled]}
+          style={[styles.button, (!userName || !password || isAuthenticating) && styles.buttonDisabled]}
           onPress={handleLogin}
-          disabled={!username || !password || isAuthenticating}
+          disabled={!userName || !password || isAuthenticating}
         >
           {isAuthenticating ? (
             <ActivityIndicator color="#FFFFFF" />
@@ -60,7 +60,7 @@ export default function LoginScreen() {
           )}
         </Pressable>
 
-        <Pressable style={styles.linkButton} onPress={() => router.push('/register')}>
+        <Pressable style={styles.linkButton} onPress={() => router.push('/register' as Href)}>
           <Text style={styles.linkButtonText}>新規登録</Text>
         </Pressable>
       </View>
