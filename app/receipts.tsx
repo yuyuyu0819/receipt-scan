@@ -7,6 +7,7 @@ import {
   SectionList,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSession } from '../context/SessionContext';
@@ -21,6 +22,12 @@ type ReceiptRecord = {
   purchaseDate?: string;
   total?: number;
   totalAmount?: number;
+  items?: ReceiptItem[];
+};
+
+type ReceiptItem = {
+  name?: string;
+  price?: number | string;
 };
 
 type GroupingMode = 'month' | 'week' | 'quarter';
@@ -109,6 +116,7 @@ export default function ReceiptsScreen() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
+  const { height: windowHeight } = useWindowDimensions();
   const [selectedDate, setSelectedDate] = useState(() => formatDate(new Date()));
   const [selectedReceipt, setSelectedReceipt] = useState<ReceiptRecord | null>(null);
 
@@ -172,7 +180,7 @@ export default function ReceiptsScreen() {
     const year = calendarMonth.getFullYear();
     const month = calendarMonth.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const startWeekday = new Date(year, month, 1).getDay();
+    const startWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
     const days: Array<number | null> = [];
 
     for (let i = 0; i < startWeekday; i += 1) {
@@ -183,6 +191,8 @@ export default function ReceiptsScreen() {
     }
     return days;
   }, [calendarMonth]);
+
+  const weekDayLabels = useMemo(() => ['月', '火', '水', '木', '金', '土', '日'], []);
 
   const receiptsByDate = useMemo(() => {
     const map = new Map<string, ReceiptRecord[]>();
@@ -210,11 +220,6 @@ export default function ReceiptsScreen() {
     return map;
   }, [receipts]);
 
-  const selectedReceipts = useMemo(() => receiptsByDate.get(selectedDate) ?? [], [
-    receiptsByDate,
-    selectedDate,
-  ]);
-
   const handleMonthChange = (direction: -1 | 1) => {
     setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + direction, 1));
   };
@@ -223,6 +228,19 @@ export default function ReceiptsScreen() {
     const totalValue = receipt.total ?? receipt.totalAmount ?? 0;
     return `${Number(totalValue).toLocaleString()}円`;
   };
+
+  const formatItemPrice = (price?: number | string) => {
+    if (price === undefined || price === null || price === '') {
+      return '';
+    }
+    const numeric = Number(price);
+    if (Number.isNaN(numeric)) {
+      return String(price);
+    }
+    return `${numeric.toLocaleString()}円`;
+  };
+
+  const calendarCellHeight = useMemo(() => Math.max(0, windowHeight * 0.12), [windowHeight]);
 
   if (!user) {
     return (
@@ -240,29 +258,30 @@ export default function ReceiptsScreen() {
           <Text style={styles.refreshText}>更新</Text>
         </Pressable>
       </View>
-      <Text style={styles.subtitle}>年月日でソートし、期間ごとにリスト表示します。</Text>
-
-      <View style={styles.toggleRow}>
-        {groupingOptions.map((option) => (
-          <Pressable
-            key={option.key}
-            style={[
-              styles.toggleButton,
-              groupingMode === option.key && styles.toggleButtonActive,
-            ]}
-            onPress={() => setGroupingMode(option.key)}
-          >
-            <Text
-              style={[
-                styles.toggleButtonText,
-                groupingMode === option.key && styles.toggleButtonTextActive,
-              ]}
-            >
-              {option.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <Text style={styles.subtitle}>指定した期間のレシートを表示しますⓌ</Text>
+      {!showCalendar && (
+          <View style={styles.toggleRow}>
+            {groupingOptions.map((option) => (
+              <Pressable
+                key={option.key}
+                style={[
+                  styles.toggleButton,
+                  groupingMode === option.key && styles.toggleButtonActive,
+                ]}
+                onPress={() => setGroupingMode(option.key)}
+              >
+                <Text
+                  style={[
+                    styles.toggleButtonText,
+                    groupingMode === option.key && styles.toggleButtonTextActive,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+      )}
 
       <Pressable
         style={[styles.calendarToggle, showCalendar && styles.calendarToggleActive]}
@@ -319,20 +338,55 @@ export default function ReceiptsScreen() {
             </Pressable>
           </View>
 
+          <View style={styles.calendarWeekdays}>
+            {weekDayLabels.map((label, index) => (
+              <Text
+                key={label}
+                style={[
+                  styles.calendarWeekdayText,
+                  index === 5 ? styles.calendarSaturdayText : null,
+                  index === 6 ? styles.calendarSundayText : null,
+                ]}
+              >
+                {label}
+              </Text>
+            ))}
+          </View>
+
           <View style={styles.calendarGrid}>
             {calendarDays.map((day, index) => {
               if (!day) {
-                return <View key={`empty-${index}`} style={styles.calendarCell} />;
+                return (
+                  <View
+                    key={`empty-${index}`}
+                    style={[styles.calendarCell, { height: calendarCellHeight }]}
+                  />
+                );
               }
               const dateValue = formatDate(
                 new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day)
               );
               const isSelected = dateValue === selectedDate;
               const dayReceipts = receiptsByDate.get(dateValue) ?? [];
+              const dayOfWeekIndex = index % 7;
               return (
-                <View key={`day-${day}`} style={[styles.calendarCell, isSelected && styles.calendarCellActive]}>
+                <View
+                  key={`day-${day}`}
+                  style={[
+                    styles.calendarCell,
+                    { height: calendarCellHeight },
+                    isSelected && styles.calendarCellActive,
+                  ]}
+                >
                   <Pressable style={styles.calendarDayButton} onPress={() => setSelectedDate(dateValue)}>
-                    <Text style={[styles.calendarCellText, isSelected && styles.calendarCellTextActive]}>
+                    <Text
+                      style={[
+                        styles.calendarCellText,
+                        dayOfWeekIndex === 5 ? styles.calendarSaturdayText : null,
+                        dayOfWeekIndex === 6 ? styles.calendarSundayText : null,
+                        isSelected && styles.calendarCellTextActive,
+                      ]}
+                    >
                       {day}
                     </Text>
                   </Pressable>
@@ -353,43 +407,41 @@ export default function ReceiptsScreen() {
             })}
           </View>
 
-          <View style={styles.selectedList}>
-            <Text style={styles.selectedTitle}>{selectedDate} のレシート</Text>
-            {selectedReceipts.length === 0 && <Text style={styles.emptyText}>レシートがありません。</Text>}
-            {selectedReceipts.map((receipt, index) => (
-              <Pressable
-                key={`${receipt.id ?? index}`}
-                style={styles.card}
-                onPress={() => setSelectedReceipt(receipt)}
-              >
-                <View>
-                  <Text style={styles.cardTitle}>{receipt.store ?? receipt.storeName ?? '店舗名未登録'}</Text>
-                  <Text style={styles.cardSubtitle}>{getReceiptDateValue(receipt)}</Text>
-                </View>
-                <Text style={styles.cardAmount}>{formatTotal(receipt)}</Text>
-              </Pressable>
-            ))}
-          </View>
         </ScrollView>
       )}
 
       <Modal transparent animationType="fade" visible={!!selectedReceipt} onRequestClose={() => setSelectedReceipt(null)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>レシート詳細</Text>
-            <Text style={styles.modalStore}>
-              {selectedReceipt?.store ?? selectedReceipt?.storeName ?? '店舗名未登録'}
-            </Text>
-            <Text style={styles.modalDate}>{selectedReceipt ? getReceiptDateValue(selectedReceipt) : ''}</Text>
-            <View style={styles.modalAmountRow}>
-              <Text style={styles.modalAmountLabel}>合計</Text>
-              <Text style={styles.modalAmountValue}>
-                {selectedReceipt ? formatTotal(selectedReceipt) : ''}
+          <View style={[styles.modalCard, { maxHeight: windowHeight * 0.85 }]}>
+            <ScrollView contentContainerStyle={styles.modalScrollContent}>
+              <Text style={styles.modalTitle}>レシート詳細</Text>
+              <Text style={styles.modalStore}>
+                {selectedReceipt?.store ?? selectedReceipt?.storeName ?? '店舗名未登録'}
               </Text>
-            </View>
-            <Pressable style={styles.modalCloseButton} onPress={() => setSelectedReceipt(null)}>
-              <Text style={styles.modalCloseText}>閉じる</Text>
-            </Pressable>
+              <Text style={styles.modalDate}>{selectedReceipt ? getReceiptDateValue(selectedReceipt) : ''}</Text>
+              <View style={styles.modalAmountRow}>
+                <Text style={styles.modalAmountLabel}>合計</Text>
+                <Text style={styles.modalAmountValue}>
+                  {selectedReceipt ? formatTotal(selectedReceipt) : ''}
+                </Text>
+              </View>
+              <View style={styles.modalItems}>
+                <Text style={styles.modalSectionTitle}>購入品</Text>
+                {selectedReceipt?.items && selectedReceipt.items.length > 0 ? (
+                  selectedReceipt.items.map((item, index) => (
+                    <View key={`${item.name ?? 'item'}-${index}`} style={styles.modalItemRow}>
+                      <Text style={styles.modalItemName}>{item.name ?? '品名未登録'}</Text>
+                      <Text style={styles.modalItemPrice}>{formatItemPrice(item.price)}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.modalEmptyText}>購入品がありません。</Text>
+                )}
+              </View>
+              <Pressable style={styles.modalCloseButton} onPress={() => setSelectedReceipt(null)}>
+                <Text style={styles.modalCloseText}>閉じる</Text>
+              </Pressable>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -567,9 +619,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
+  calendarWeekdays: {
+    marginTop: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  calendarWeekdayText: {
+    width: '14.28%',
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  calendarSaturdayText: {
+    color: '#2563EB',
+  },
+  calendarSundayText: {
+    color: '#DC2626',
+  },
   calendarCell: {
     width: '14.28%',
-    aspectRatio: 1,
     justifyContent: 'flex-start',
     alignItems: 'stretch',
     borderRadius: 8,
@@ -595,11 +664,11 @@ const styles = StyleSheet.create({
   },
   calendarCellText: {
     fontSize: 12,
-    color: '#4338CA',
+    color: '#111827',
     fontWeight: '600',
   },
   calendarCellTextActive: {
-    color: '#312E81',
+    fontWeight: '700',
   },
   calendarReceiptPill: {
     marginTop: 4,
@@ -620,15 +689,6 @@ const styles = StyleSheet.create({
     color: '#4F46E5',
     fontWeight: '700',
   },
-  selectedList: {
-    marginTop: 16,
-  },
-  selectedTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.35)',
@@ -644,6 +704,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 20,
     elevation: 4,
+  },
+  modalScrollContent: {
+    paddingBottom: 8,
   },
   modalTitle: {
     fontSize: 18,
@@ -679,6 +742,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#4338CA',
     fontWeight: '700',
+  },
+  modalItems: {
+    marginTop: 16,
+  },
+  modalSectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  modalItemRow: {
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  modalItemName: {
+    flex: 1,
+    fontSize: 13,
+    color: '#111827',
+    fontWeight: '600',
+  },
+  modalItemPrice: {
+    fontSize: 13,
+    color: '#4F46E5',
+    fontWeight: '700',
+  },
+  modalEmptyText: {
+    fontSize: 12,
+    color: '#6B7280',
   },
   modalCloseButton: {
     marginTop: 20,
