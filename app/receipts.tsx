@@ -258,29 +258,30 @@ export default function ReceiptsScreen() {
           <Text style={styles.refreshText}>更新</Text>
         </Pressable>
       </View>
-      <Text style={styles.subtitle}>年月日でソートし、期間ごとにリスト表示します。</Text>
-
-      <View style={styles.toggleRow}>
-        {groupingOptions.map((option) => (
-          <Pressable
-            key={option.key}
-            style={[
-              styles.toggleButton,
-              groupingMode === option.key && styles.toggleButtonActive,
-            ]}
-            onPress={() => setGroupingMode(option.key)}
-          >
-            <Text
-              style={[
-                styles.toggleButtonText,
-                groupingMode === option.key && styles.toggleButtonTextActive,
-              ]}
-            >
-              {option.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <Text style={styles.subtitle}>指定した期間のレシートを表示しますⓌ</Text>
+      {!showCalendar && (
+          <View style={styles.toggleRow}>
+            {groupingOptions.map((option) => (
+              <Pressable
+                key={option.key}
+                style={[
+                  styles.toggleButton,
+                  groupingMode === option.key && styles.toggleButtonActive,
+                ]}
+                onPress={() => setGroupingMode(option.key)}
+              >
+                <Text
+                  style={[
+                    styles.toggleButtonText,
+                    groupingMode === option.key && styles.toggleButtonTextActive,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+      )}
 
       <Pressable
         style={[styles.calendarToggle, showCalendar && styles.calendarToggleActive]}
