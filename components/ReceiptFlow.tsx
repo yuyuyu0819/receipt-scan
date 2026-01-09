@@ -1,15 +1,18 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter, type Href } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Easing,
   Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { API_BASE_URL } from '../utils/api';
@@ -71,8 +74,36 @@ export default function ReceiptFlow() {
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const loadingProgress = useRef(new Animated.Value(0)).current;
   const router = useRouter();
   const { user } = useSession();
+  const { width: windowWidth } = useWindowDimensions();
+  const progressContainerWidth = Math.min(280, Math.max(180, windowWidth - 96));
+  const progressBarWidth = Math.max(80, progressContainerWidth * 0.35);
+
+  useEffect(() => {
+    if (!isLoading) {
+      loadingProgress.stopAnimation();
+      loadingProgress.setValue(0);
+      return;
+    }
+
+    const animation = Animated.loop(
+      Animated.timing(loadingProgress, {
+        toValue: 1,
+        duration: 1200,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }),
+    );
+
+    animation.start();
+
+    return () => {
+      animation.stop();
+      loadingProgress.setValue(0);
+    };
+  }, [isLoading, loadingProgress]);
 
   const itemsTotal = useMemo(() => {
     if (!receipt) return 0;
@@ -225,6 +256,34 @@ export default function ReceiptFlow() {
         </Pressable>
       </View>
 
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color="#4F46E5" />
+            <Text style={styles.loadingTitle}>レシートを解析中...</Text>
+            <View style={[styles.progressTrack, { width: progressContainerWidth }]}>
+              <Animated.View
+                style={[
+                  styles.progressBar,
+                  {
+                    width: progressBarWidth,
+                    transform: [
+                      {
+                        translateX: loadingProgress.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-progressBarWidth, progressContainerWidth],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.loadingHint}>完了までしばらくお待ちください。</Text>
+          </View>
+        </View>
+      )}
+
       {step === 'select' && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>画像の登録方法を選択</Text>
@@ -262,13 +321,6 @@ export default function ReceiptFlow() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>レシート内容の確認</Text>
           <Text style={styles.cardDescription}>内容を確認し、必要に応じて修正してください。</Text>
-
-          {isLoading && (
-            <View style={styles.loadingBox}>
-              <ActivityIndicator size="large" color="#4F46E5" />
-              <Text style={styles.loadingText}>解析中です...</Text>
-            </View>
-          )}
 
           {!isLoading && errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
 
@@ -439,18 +491,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  loadingBox: {
-    marginTop: 20,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#EEF2FF',
-    flexDirection: 'row',
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  loadingCard: {
+    width: '85%',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    borderRadius: 20,
     alignItems: 'center',
     gap: 12,
+    shadowColor: '#1F2937',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 18,
+    elevation: 6,
   },
-  loadingText: {
-    fontSize: 14,
-    color: '#4338CA',
+  loadingTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  loadingHint: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  progressTrack: {
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: '#E0E7FF',
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: '#4F46E5',
   },
   errorText: {
     marginTop: 16,

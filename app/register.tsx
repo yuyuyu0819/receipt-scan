@@ -78,8 +78,12 @@ export default function RegisterScreen() {
         throw new Error(`Register API error: ${response.status}`);
       }
 
-      Alert.alert('登録完了', 'ログイン画面からログインしてください');
-      router.replace('/');
+      Alert.alert('登録完了', '登録完了しました。ログイン画面に遷移します', [
+        {
+          text: 'OK',
+          onPress: () => router.replace('/'),
+        },
+      ]);
     } catch (error) {
       console.error('登録エラー:', error);
       setErrorMessage('登録に失敗しました');
