@@ -1,5 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter, type Href } from 'expo-router';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,8 +15,8 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { API_BASE_URL } from '../utils/api';
 import { useSession } from '../context/SessionContext';
+import { API_BASE_URL } from '../utils/api';
 
 type ReceiptItem = {
   name: string;
@@ -250,10 +250,6 @@ export default function ReceiptFlow() {
     <ScrollView contentContainerStyle={styles.page}>
       <View style={styles.header}>
         <Text style={styles.title}>レシート登録</Text>
-        <Text style={styles.subtitle}>撮影・添付・確認を分けて進められます</Text>
-        <Pressable style={styles.linkButton} onPress={() => router.push('/receipts' as Href)}>
-          <Text style={styles.linkButtonText}>登録レシートの閲覧</Text>
-        </Pressable>
       </View>
 
       {isLoading && (

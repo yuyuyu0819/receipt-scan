@@ -258,7 +258,7 @@ export default function ReceiptsScreen() {
           <Text style={styles.refreshText}>更新</Text>
         </Pressable>
       </View>
-      <Text style={styles.subtitle}>指定した期間のレシートを表示しますⓌ</Text>
+      <Text style={styles.subtitle}>指定した期間に分割してレシートを表示します</Text>
       {!showCalendar && (
           <View style={styles.toggleRow}>
             {groupingOptions.map((option) => (
