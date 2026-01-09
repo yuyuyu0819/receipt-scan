@@ -180,7 +180,7 @@ export default function ReceiptsScreen() {
     const year = calendarMonth.getFullYear();
     const month = calendarMonth.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const startWeekday = new Date(year, month, 1).getDay();
+    const startWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
     const days: Array<number | null> = [];
 
     for (let i = 0; i < startWeekday; i += 1) {
@@ -191,6 +191,8 @@ export default function ReceiptsScreen() {
     }
     return days;
   }, [calendarMonth]);
+
+  const weekDayLabels = useMemo(() => ['月', '火', '水', '木', '金', '土', '日'], []);
 
   const receiptsByDate = useMemo(() => {
     const map = new Map<string, ReceiptRecord[]>();
@@ -333,6 +335,14 @@ export default function ReceiptsScreen() {
             <Pressable style={styles.calendarNav} onPress={() => handleMonthChange(1)}>
               <Text style={styles.calendarNavText}>▶</Text>
             </Pressable>
+          </View>
+
+          <View style={styles.calendarWeekdays}>
+            {weekDayLabels.map((label) => (
+              <Text key={label} style={styles.calendarWeekdayText}>
+                {label}
+              </Text>
+            ))}
           </View>
 
           <View style={styles.calendarGrid}>
@@ -590,6 +600,18 @@ const styles = StyleSheet.create({
     marginTop: 12,
     flexDirection: 'row',
     flexWrap: 'wrap',
+  },
+  calendarWeekdays: {
+    marginTop: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  calendarWeekdayText: {
+    width: '14.28%',
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6B7280',
   },
   calendarCell: {
     width: '14.28%',
