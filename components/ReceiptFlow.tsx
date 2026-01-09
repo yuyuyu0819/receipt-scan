@@ -169,6 +169,14 @@ export default function ReceiptFlow() {
     });
   };
 
+  const addItem = () => {
+    if (!receipt) return;
+    setReceipt({
+      ...receipt,
+      items: [...receipt.items, { name: '', price: '' }],
+    });
+  };
+
   const handleRegister = async () => {
     if (!receipt) return;
     if (!user) {
@@ -296,8 +304,13 @@ export default function ReceiptFlow() {
               </View>
 
               <View style={styles.itemsHeader}>
-                <Text style={styles.itemsTitle}>購入品</Text>
-                <Text style={styles.itemsSubtitle}>合計: {itemsTotal.toLocaleString()}円</Text>
+                <View>
+                  <Text style={styles.itemsTitle}>購入品</Text>
+                  <Text style={styles.itemsSubtitle}>合計: {itemsTotal.toLocaleString()}円</Text>
+                </View>
+                <Pressable style={styles.addItemButton} onPress={addItem}>
+                  <Text style={styles.addItemButtonText}>購入品を追加</Text>
+                </Pressable>
               </View>
 
               {receipt.items.map((item, index) => (
@@ -471,6 +484,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
   },
   itemsTitle: {
     fontSize: 16,
@@ -480,6 +494,17 @@ const styles = StyleSheet.create({
   itemsSubtitle: {
     fontSize: 12,
     color: '#6B7280',
+  },
+  addItemButton: {
+    backgroundColor: '#EEF2FF',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+  },
+  addItemButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4338CA',
   },
   itemRow: {
     flexDirection: 'row',
