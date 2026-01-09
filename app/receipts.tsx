@@ -117,7 +117,7 @@ export default function ReceiptsScreen() {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/user/receipt`, {
+      const response = await fetch(`${API_BASE_URL}/api/receipts/by-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
