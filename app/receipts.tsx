@@ -21,6 +21,12 @@ type ReceiptRecord = {
   purchaseDate?: string;
   total?: number;
   totalAmount?: number;
+  items?: ReceiptItem[];
+};
+
+type ReceiptItem = {
+  name?: string;
+  price?: number | string;
 };
 
 type GroupingMode = 'month' | 'week' | 'quarter';
@@ -210,11 +216,6 @@ export default function ReceiptsScreen() {
     return map;
   }, [receipts]);
 
-  const selectedReceipts = useMemo(() => receiptsByDate.get(selectedDate) ?? [], [
-    receiptsByDate,
-    selectedDate,
-  ]);
-
   const handleMonthChange = (direction: -1 | 1) => {
     setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + direction, 1));
   };
@@ -222,6 +223,17 @@ export default function ReceiptsScreen() {
   const formatTotal = (receipt: ReceiptRecord) => {
     const totalValue = receipt.total ?? receipt.totalAmount ?? 0;
     return `${Number(totalValue).toLocaleString()}円`;
+  };
+
+  const formatItemPrice = (price?: number | string) => {
+    if (price === undefined || price === null || price === '') {
+      return '';
+    }
+    const numeric = Number(price);
+    if (Number.isNaN(numeric)) {
+      return String(price);
+    }
+    return `${numeric.toLocaleString()}円`;
   };
 
   if (!user) {
@@ -353,23 +365,6 @@ export default function ReceiptsScreen() {
             })}
           </View>
 
-          <View style={styles.selectedList}>
-            <Text style={styles.selectedTitle}>{selectedDate} のレシート</Text>
-            {selectedReceipts.length === 0 && <Text style={styles.emptyText}>レシートがありません。</Text>}
-            {selectedReceipts.map((receipt, index) => (
-              <Pressable
-                key={`${receipt.id ?? index}`}
-                style={styles.card}
-                onPress={() => setSelectedReceipt(receipt)}
-              >
-                <View>
-                  <Text style={styles.cardTitle}>{receipt.store ?? receipt.storeName ?? '店舗名未登録'}</Text>
-                  <Text style={styles.cardSubtitle}>{getReceiptDateValue(receipt)}</Text>
-                </View>
-                <Text style={styles.cardAmount}>{formatTotal(receipt)}</Text>
-              </Pressable>
-            ))}
-          </View>
         </ScrollView>
       )}
 
@@ -386,6 +381,19 @@ export default function ReceiptsScreen() {
               <Text style={styles.modalAmountValue}>
                 {selectedReceipt ? formatTotal(selectedReceipt) : ''}
               </Text>
+            </View>
+            <View style={styles.modalItems}>
+              <Text style={styles.modalSectionTitle}>購入品</Text>
+              {selectedReceipt?.items && selectedReceipt.items.length > 0 ? (
+                selectedReceipt.items.map((item, index) => (
+                  <View key={`${item.name ?? 'item'}-${index}`} style={styles.modalItemRow}>
+                    <Text style={styles.modalItemName}>{item.name ?? '品名未登録'}</Text>
+                    <Text style={styles.modalItemPrice}>{formatItemPrice(item.price)}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.modalEmptyText}>購入品がありません。</Text>
+              )}
             </View>
             <Pressable style={styles.modalCloseButton} onPress={() => setSelectedReceipt(null)}>
               <Text style={styles.modalCloseText}>閉じる</Text>
@@ -620,15 +628,6 @@ const styles = StyleSheet.create({
     color: '#4F46E5',
     fontWeight: '700',
   },
-  selectedList: {
-    marginTop: 16,
-  },
-  selectedTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.35)',
@@ -679,6 +678,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#4338CA',
     fontWeight: '700',
+  },
+  modalItems: {
+    marginTop: 16,
+  },
+  modalSectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  modalItemRow: {
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  modalItemName: {
+    flex: 1,
+    fontSize: 13,
+    color: '#111827',
+    fontWeight: '600',
+  },
+  modalItemPrice: {
+    fontSize: 13,
+    color: '#4F46E5',
+    fontWeight: '700',
+  },
+  modalEmptyText: {
+    fontSize: 12,
+    color: '#6B7280',
   },
   modalCloseButton: {
     marginTop: 20,
