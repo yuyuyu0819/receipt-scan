@@ -15,10 +15,6 @@ export default function RegisterScreen() {
   const [recaptchaMessage, setRecaptchaMessage] = useState<string | null>(null);
   const recaptchaSiteKey = process.env.EXPO_PUBLIC_RECAPTCHA_SITE_KEY;
 
-  const trimmedUserId = userId.trim();
-  const parsedUserId = Number(trimmedUserId);
-  const isUserIdValid = Number.isInteger(parsedUserId) && parsedUserId > 0;
-
   const recaptchaHtml = useMemo(() => {
     if (!recaptchaSiteKey) return '';
     return `<!DOCTYPE html>
