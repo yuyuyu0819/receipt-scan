@@ -7,6 +7,7 @@ import {
   SectionList,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSession } from '../context/SessionContext';
@@ -115,6 +116,7 @@ export default function ReceiptsScreen() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
+  const { height: windowHeight } = useWindowDimensions();
   const [selectedDate, setSelectedDate] = useState(() => formatDate(new Date()));
   const [selectedReceipt, setSelectedReceipt] = useState<ReceiptRecord | null>(null);
 
@@ -236,6 +238,8 @@ export default function ReceiptsScreen() {
     return `${numeric.toLocaleString()}円`;
   };
 
+  const calendarCellHeight = useMemo(() => Math.max(0, windowHeight * 0.12), [windowHeight]);
+
   if (!user) {
     return (
       <View style={styles.centered}>
@@ -334,7 +338,12 @@ export default function ReceiptsScreen() {
           <View style={styles.calendarGrid}>
             {calendarDays.map((day, index) => {
               if (!day) {
-                return <View key={`empty-${index}`} style={styles.calendarCell} />;
+                return (
+                  <View
+                    key={`empty-${index}`}
+                    style={[styles.calendarCell, { height: calendarCellHeight }]}
+                  />
+                );
               }
               const dateValue = formatDate(
                 new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day)
@@ -342,7 +351,14 @@ export default function ReceiptsScreen() {
               const isSelected = dateValue === selectedDate;
               const dayReceipts = receiptsByDate.get(dateValue) ?? [];
               return (
-                <View key={`day-${day}`} style={[styles.calendarCell, isSelected && styles.calendarCellActive]}>
+                <View
+                  key={`day-${day}`}
+                  style={[
+                    styles.calendarCell,
+                    { height: calendarCellHeight },
+                    isSelected && styles.calendarCellActive,
+                  ]}
+                >
                   <Pressable style={styles.calendarDayButton} onPress={() => setSelectedDate(dateValue)}>
                     <Text style={[styles.calendarCellText, isSelected && styles.calendarCellTextActive]}>
                       {day}
@@ -577,7 +593,6 @@ const styles = StyleSheet.create({
   },
   calendarCell: {
     width: '14.28%',
-    aspectRatio: 1,
     justifyContent: 'flex-start',
     alignItems: 'stretch',
     borderRadius: 8,
