@@ -8,6 +8,7 @@ export type SessionUser = {
 
 type SessionContextValue = {
   user: SessionUser | null;
+  token: string | null;
   isAuthenticating: boolean;
   signIn: (userName: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   signOut: () => void;
@@ -44,6 +45,7 @@ const parseUserFromResponse = (data: unknown, userName: string): SessionUser | n
 
 export const SessionProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<SessionUser | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const signIn = async (userName: string, password: string) => {
@@ -68,6 +70,7 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
       }
 
       setUser(nextUser);
+      setToken(typeof (data as { token?: unknown })?.token === 'string' ? (data as { token: string }).token : null);
       return { ok: true };
     } catch (error) {
       console.error('ログインエラー:', error);
@@ -77,16 +80,20 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
     }
   };
 
-  const signOut = () => setUser(null);
+  const signOut = () => {
+    setUser(null);
+    setToken(null);
+  };
 
   const value = useMemo(
     () => ({
       user,
+      token,
       isAuthenticating,
       signIn,
       signOut,
     }),
-    [user, isAuthenticating]
+    [user, token, isAuthenticating]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

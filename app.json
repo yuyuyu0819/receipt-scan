@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "receipt-ocr-app",
-    "slug": "receipt-ocr-app",
+    "name": "レシート家計簿",
+    "slug": "receipt-kakeibo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,9 +9,15 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "レシートを撮影して家計簿に登録するためにカメラを使用します。",
+        "NSPhotoLibraryUsageDescription": "レシート画像を選択して家計簿に登録するために写真へのアクセスを使用します。"
+      }
     },
     "android": {
+      "package": "com.yourname.receiptKakeibo",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"

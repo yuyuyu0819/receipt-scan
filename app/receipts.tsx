@@ -106,7 +106,7 @@ const groupReceipts = (receipts: ReceiptRecord[], mode: GroupingMode) => {
 };
 
 export default function ReceiptsScreen() {
-  const { user } = useSession();
+  const { user, token } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [receipts, setReceipts] = useState<ReceiptRecord[]>([]);
@@ -121,7 +121,7 @@ export default function ReceiptsScreen() {
   const [selectedReceipt, setSelectedReceipt] = useState<ReceiptRecord | null>(null);
 
   const fetchReceipts = useCallback(async () => {
-    if (!user) return;
+    if (!user || !token) return;
     setIsLoading(true);
     setErrorMessage(null);
     try {
@@ -129,6 +129,7 @@ export default function ReceiptsScreen() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ userId: user.id }),
       });
@@ -152,7 +153,7 @@ export default function ReceiptsScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, token]);
 
   useEffect(() => {
     if (user) {
