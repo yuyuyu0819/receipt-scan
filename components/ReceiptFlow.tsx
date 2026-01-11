@@ -76,7 +76,7 @@ export default function ReceiptFlow() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const loadingProgress = useRef(new Animated.Value(0)).current;
   const router = useRouter();
-  const { user } = useSession();
+  const { user, token } = useSession();
   const { width: windowWidth } = useWindowDimensions();
   const progressContainerWidth = Math.min(280, Math.max(180, windowWidth - 96));
   const progressBarWidth = Math.max(80, progressContainerWidth * 0.35);
@@ -210,14 +210,13 @@ export default function ReceiptFlow() {
 
   const handleRegister = async () => {
     if (!receipt) return;
-    if (!user) {
+    if (!user || !token) {
       Alert.alert('エラー', 'ログイン情報がありません');
       return;
     }
 
     try {
       const payload = {
-        userId: user.id,
         store: receipt.store,
         date: receipt.date,
         total: Number(receipt.total || 0),
@@ -231,6 +230,7 @@ export default function ReceiptFlow() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
