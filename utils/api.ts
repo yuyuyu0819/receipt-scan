@@ -2,8 +2,9 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 export const getApiBaseUrl = () => {
-  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
-    return process.env.EXPO_PUBLIC_API_BASE_URL;
+  const envBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+  if (envBaseUrl && envBaseUrl.toLowerCase() !== 'auto') {
+    return envBaseUrl;
   }
 
   const hostUri =
