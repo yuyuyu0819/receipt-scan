@@ -16,8 +16,8 @@
       }
     },
     "android": {
-      "package": "com.yourname.receiptKakeibo",
-      "versionCode": 1,
+      "package": "com.yuyuyu0819.receiptKakeibo",
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -45,6 +45,19 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e90130fd-e346-46d9-8de8-412be47b890b"
+      }
+    },
+    "owner": "yuyuyu0819",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e90130fd-e346-46d9-8de8-412be47b890b"
     }
   }
 }
