@@ -306,19 +306,23 @@ export default function ReceiptsScreen() {
         <SectionList
           sections={groupedReceipts}
           keyExtractor={(item, index) => `${item.id ?? getReceiptDateValue(item)}-${index}`}
-          renderSectionHeader={({ section }) => (
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{section.title}</Text>
-            </View>
-          )}
+          renderSectionHeader={({ section }) => {
+            const sectionTotal = section.data.reduce((sum, r) => sum + Number(r.total ?? r.totalAmount ?? 0), 0);
+            return (
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>{section.title}</Text>
+                <Text style={styles.sectionTotal}>{sectionTotal.toLocaleString()}円</Text>
+              </View>
+            );
+          }}
           renderItem={({ item }) => (
-            <View style={styles.card}>
+            <Pressable style={styles.card} onPress={() => setSelectedReceipt(item)}>
               <View>
                 <Text style={styles.cardTitle}>{item.store ?? item.storeName ?? '店舗名未登録'}</Text>
                 <Text style={styles.cardSubtitle}>{getReceiptDateValue(item)}</Text>
               </View>
               <Text style={styles.cardAmount}>{formatTotal(item)}</Text>
-            </View>
+            </Pressable>
           )}
           ListEmptyComponent={<Text style={styles.emptyText}>レシートがありません。</Text>}
           contentContainerStyle={styles.listContent}
@@ -546,11 +550,19 @@ const styles = StyleSheet.create({
   sectionHeader: {
     marginTop: 16,
     marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '700',
     color: '#111827',
+  },
+  sectionTotal: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#4F46E5',
   },
   card: {
     backgroundColor: '#FFFFFF',
