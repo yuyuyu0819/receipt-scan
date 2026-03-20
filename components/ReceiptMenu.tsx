@@ -1,11 +1,18 @@
 import { useRouter, type Href } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSession } from '../context/SessionContext';
 
 export default function ReceiptMenu() {
   const router = useRouter();
-  const { user } = useSession();
+  const { user, signOut } = useSession();
+
+  const handleSignOut = () => {
+    Alert.alert('ログアウト', 'ログアウトしますか？', [
+      { text: 'キャンセル', style: 'cancel' },
+      { text: 'ログアウト', style: 'destructive', onPress: signOut },
+    ]);
+  };
 
   return (
     <View style={styles.page}>
@@ -20,6 +27,9 @@ export default function ReceiptMenu() {
         </Pressable>
         <Pressable style={[styles.button, styles.secondary]} onPress={() => router.push('/scan' as Href)}>
           <Text style={styles.buttonText}>レシート登録</Text>
+        </Pressable>
+        <Pressable style={[styles.button, styles.signOut]} onPress={handleSignOut}>
+          <Text style={styles.buttonText}>ログアウト</Text>
         </Pressable>
       </View>
     </View>
@@ -64,6 +74,9 @@ const styles = StyleSheet.create({
   },
   secondary: {
     backgroundColor: '#6366F1',
+  },
+  signOut: {
+    backgroundColor: '#EF4444',
   },
   buttonText: {
     color: '#FFFFFF',

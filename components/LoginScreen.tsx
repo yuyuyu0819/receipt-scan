@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSession } from '../context/SessionContext';
 
 export default function LoginScreen() {
-  const { signIn, isAuthenticating } = useSession();
+  const { signIn, signInWithBiometric, isAuthenticating, biometricEnabled, biometricAvailable } = useSession();
   const router = useRouter();
   const [userName, setUserName] = useState('');
   const [password, setPassword] = useState('');
@@ -17,6 +18,16 @@ export default function LoginScreen() {
       setErrorMessage(result.message ?? 'ログインに失敗しました');
     }
   };
+
+  const handleBiometric = async () => {
+    setErrorMessage(null);
+    const result = await signInWithBiometric();
+    if (!result.ok) {
+      setErrorMessage(result.message ?? '認証に失敗しました');
+    }
+  };
+
+  const showBiometricButton = biometricAvailable && biometricEnabled;
 
   return (
     <View style={styles.page}>
@@ -59,6 +70,17 @@ export default function LoginScreen() {
             <Text style={styles.buttonText}>ログイン</Text>
           )}
         </Pressable>
+
+        {showBiometricButton && (
+          <Pressable
+            style={[styles.biometricButton, isAuthenticating && styles.buttonDisabled]}
+            onPress={handleBiometric}
+            disabled={isAuthenticating}
+          >
+            <MaterialCommunityIcons name="fingerprint" size={28} color="#4F46E5" />
+            <Text style={styles.biometricButtonText}>指紋認証でログイン</Text>
+          </Pressable>
+        )}
 
         <Pressable style={styles.linkButton} onPress={() => router.push('/register' as Href)}>
           <Text style={styles.linkButtonText}>新規登録</Text>
@@ -131,6 +153,22 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  biometricButton: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#4F46E5',
+  },
+  biometricButtonText: {
+    color: '#4F46E5',
     fontSize: 15,
     fontWeight: '600',
   },
