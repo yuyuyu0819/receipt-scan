@@ -1,3 +1,3 @@
-const PRODUCTION_API_BASE_URL = 'http://35.74.206.197:8080';
+const PRODUCTION_API_BASE_URL = 'https://api.yuyuyu-service.com';
 
 export const API_BASE_URL = PRODUCTION_API_BASE_URL;
