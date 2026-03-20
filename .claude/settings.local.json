@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find . -maxdepth 2 -type d ! -path */node_modules/* ! -path */.git/* ! -path */.expo/*)"
+    ]
+  }
+}
