@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -27,6 +27,7 @@ const STORE_KEY_USER = 'session_user';
 const STORE_KEY_TOKEN = 'session_token';
 const STORE_KEY_EXPIRY = 'session_expiry';
 const STORE_KEY_BIOMETRIC_ENABLED = 'biometric_enabled';
+// パスワードではなく user + token を保存する
 const STORE_KEY_BIOMETRIC_CREDS = 'biometric_creds';
 
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 1ヶ月
@@ -55,14 +56,14 @@ const parseUserFromResponse = (data: unknown, userName: string): SessionUser | n
   return { id: resolvedId, userName: resolvedUserName };
 };
 
-const callLoginAPI = async (userName: string, password: string) => {
+const callLoginAPI = async (userName: string, password: string): Promise<{ status: number; data: unknown }> => {
   const response = await fetch(`${API_BASE_URL}/api/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userName, password }),
   });
-  if (!response.ok) return null;
-  return response.json().catch(() => ({}));
+  const data = response.ok ? await response.json().catch(() => ({})) : null;
+  return { status: response.status, data };
 };
 
 export const SessionProvider = ({ children }: { children: React.ReactNode }) => {
@@ -72,6 +73,25 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
   const [isLoading, setIsLoading] = useState(true);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
+
+  const clearStore = useCallback(async () => {
+    await Promise.all([
+      SecureStore.deleteItemAsync(STORE_KEY_USER),
+      SecureStore.deleteItemAsync(STORE_KEY_TOKEN),
+      SecureStore.deleteItemAsync(STORE_KEY_EXPIRY),
+    ]);
+  }, []);
+
+  const saveSession = useCallback(async (nextUser: SessionUser, nextToken: string | null) => {
+    const expiry = Date.now() + SESSION_DURATION_MS;
+    await Promise.all([
+      SecureStore.setItemAsync(STORE_KEY_USER, JSON.stringify(nextUser)),
+      SecureStore.setItemAsync(STORE_KEY_TOKEN, nextToken ?? ''),
+      SecureStore.setItemAsync(STORE_KEY_EXPIRY, String(expiry)),
+    ]);
+    setUser(nextUser);
+    setToken(nextToken);
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -110,28 +130,10 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
     };
 
     init();
-  }, []);
+  }, [clearStore]);
 
-  const clearStore = async () => {
-    await Promise.all([
-      SecureStore.deleteItemAsync(STORE_KEY_USER),
-      SecureStore.deleteItemAsync(STORE_KEY_TOKEN),
-      SecureStore.deleteItemAsync(STORE_KEY_EXPIRY),
-    ]);
-  };
-
-  const saveSession = async (nextUser: SessionUser, nextToken: string | null) => {
-    const expiry = Date.now() + SESSION_DURATION_MS;
-    await Promise.all([
-      SecureStore.setItemAsync(STORE_KEY_USER, JSON.stringify(nextUser)),
-      SecureStore.setItemAsync(STORE_KEY_TOKEN, nextToken ?? ''),
-      SecureStore.setItemAsync(STORE_KEY_EXPIRY, String(expiry)),
-    ]);
-    setUser(nextUser);
-    setToken(nextToken);
-  };
-
-  const offerBiometricSetup = (userName: string, password: string) => {
+  // パスワードではなく user + token を保存する
+  const offerBiometricSetup = useCallback((nextUser: SessionUser, nextToken: string) => {
     Alert.alert(
       '生体認証でログイン',
       '次回から指紋認証（または顔認証）でログインしますか？',
@@ -142,20 +144,26 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
           onPress: async () => {
             await Promise.all([
               SecureStore.setItemAsync(STORE_KEY_BIOMETRIC_ENABLED, '1'),
-              SecureStore.setItemAsync(STORE_KEY_BIOMETRIC_CREDS, JSON.stringify({ userName, password })),
+              SecureStore.setItemAsync(
+                STORE_KEY_BIOMETRIC_CREDS,
+                JSON.stringify({ user: nextUser, token: nextToken })
+              ),
             ]);
             setBiometricEnabled(true);
           },
         },
       ]
     );
-  };
+  }, []);
 
-  const signIn = async (userName: string, password: string) => {
+  const signIn = useCallback(async (userName: string, password: string) => {
     setIsAuthenticating(true);
     try {
-      const data = await callLoginAPI(userName, password);
-      if (!data) return { ok: false, message: 'ログインに失敗しました' };
+      const { status, data } = await callLoginAPI(userName, password);
+      if (!data) {
+        if (status === 401) return { ok: false, message: 'ユーザー名またはパスワードが正しくありません' };
+        return { ok: false, message: 'ログインに失敗しました' };
+      }
 
       const nextUser = parseUserFromResponse(data, userName);
       if (!nextUser) return { ok: false, message: 'ユーザー情報を取得できませんでした' };
@@ -163,9 +171,15 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
       const nextToken = typeof (data as { token?: unknown })?.token === 'string' ? (data as { token: string }).token : null;
       await saveSession(nextUser, nextToken);
 
-      // 生体認証が利用可能で未設定の場合は設定を促す
       if (biometricAvailable && !biometricEnabled) {
-        offerBiometricSetup(userName, password);
+        // 生体認証が利用可能で未設定の場合は設定を促す
+        offerBiometricSetup(nextUser, nextToken ?? '');
+      } else if (biometricAvailable && biometricEnabled) {
+        // 生体認証有効時はログインのたびに保存済みトークンを最新化する
+        await SecureStore.setItemAsync(
+          STORE_KEY_BIOMETRIC_CREDS,
+          JSON.stringify({ user: nextUser, token: nextToken ?? '' })
+        );
       }
 
       return { ok: true };
@@ -175,9 +189,9 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
     } finally {
       setIsAuthenticating(false);
     }
-  };
+  }, [biometricAvailable, biometricEnabled, saveSession, offerBiometricSetup]);
 
-  const signInWithBiometric = async () => {
+  const signInWithBiometric = useCallback(async () => {
     try {
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: '指紋認証でログイン',
@@ -192,31 +206,32 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
       const stored = await SecureStore.getItemAsync(STORE_KEY_BIOMETRIC_CREDS);
       if (!stored) return { ok: false, message: '認証情報が見つかりません。パスワードでログインしてください。' };
 
-      const { userName, password } = JSON.parse(stored) as { userName: string; password: string };
+      const { user: storedUser, token: storedToken } = JSON.parse(stored) as { user: SessionUser; token: string };
 
-      setIsAuthenticating(true);
-      const data = await callLoginAPI(userName, password);
-      if (!data) return { ok: false, message: 'ログインに失敗しました' };
+      // トークンが空の場合は生体認証設定をクリアしてパスワード入力を促す
+      if (!storedToken) {
+        await Promise.all([
+          SecureStore.deleteItemAsync(STORE_KEY_BIOMETRIC_ENABLED),
+          SecureStore.deleteItemAsync(STORE_KEY_BIOMETRIC_CREDS),
+        ]);
+        setBiometricEnabled(false);
+        return { ok: false, message: '認証情報が無効です。パスワードでログインしてください。' };
+      }
 
-      const nextUser = parseUserFromResponse(data, userName);
-      if (!nextUser) return { ok: false, message: 'ユーザー情報を取得できませんでした' };
-
-      const nextToken = typeof (data as { token?: unknown })?.token === 'string' ? (data as { token: string }).token : null;
-      await saveSession(nextUser, nextToken);
-
+      // 保存済みのセッション情報を復元する（ネットワーク通信なし）
+      // トークンがサーバー側で失効している場合、次のAPI呼び出し時に401で自動ログアウトされる
+      await saveSession(storedUser, storedToken);
       return { ok: true };
     } catch {
-      return { ok: false, message: '通信に失敗しました' };
-    } finally {
-      setIsAuthenticating(false);
+      return { ok: false, message: '認証に失敗しました' };
     }
-  };
+  }, [saveSession]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     await clearStore();
     setUser(null);
     setToken(null);
-  };
+  }, [clearStore]);
 
   const value = useMemo(
     () => ({
@@ -230,7 +245,7 @@ export const SessionProvider = ({ children }: { children: React.ReactNode }) => 
       signInWithBiometric,
       signOut,
     }),
-    [user, token, isAuthenticating, isLoading, biometricAvailable, biometricEnabled]
+    [user, token, isAuthenticating, isLoading, biometricAvailable, biometricEnabled, signIn, signInWithBiometric, signOut]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

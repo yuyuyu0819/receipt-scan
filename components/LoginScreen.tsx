@@ -11,8 +11,25 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const validate = (): string | null => {
+    const trimmed = userName.trim();
+    if (!trimmed) return 'ユーザー名を入力してください';
+    if (trimmed.length > 50) return 'ユーザー名は50文字以内で入力してください';
+    // 英数字・アンダースコア・ハイフン・ドット・@のみ許可（SQL特殊文字を排除）
+    if (!/^[a-zA-Z0-9_.@-]+$/.test(trimmed)) return 'ユーザー名に使用できない文字が含まれています';
+    if (!password) return 'パスワードを入力してください';
+    if (password.length < 8) return 'パスワードは8文字以上で入力してください';
+    if (password.length > 100) return 'パスワードは100文字以内で入力してください';
+    return null;
+  };
+
   const handleLogin = async () => {
     setErrorMessage(null);
+    const validationError = validate();
+    if (validationError) {
+      setErrorMessage(validationError);
+      return;
+    }
     const result = await signIn(userName.trim(), password);
     if (!result.ok) {
       setErrorMessage(result.message ?? 'ログインに失敗しました');

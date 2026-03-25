@@ -106,7 +106,7 @@ const groupReceipts = (receipts: ReceiptRecord[], mode: GroupingMode) => {
 };
 
 export default function ReceiptsScreen() {
-  const { user, token } = useSession();
+  const { user, token, signOut } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [receipts, setReceipts] = useState<ReceiptRecord[]>([]);
@@ -125,15 +125,18 @@ export default function ReceiptsScreen() {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/receipts/by-user`, {
-        method: 'POST',
+      // userId をbodyに含めず、サーバーがBearerトークンからユーザーを特定する
+      const response = await fetch(`${API_BASE_URL}/api/receipts`, {
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ userId: user.id }),
       });
 
+      if (response.status === 401) {
+        signOut();
+        return;
+      }
       if (!response.ok) {
         throw new Error(`Receipt API error: ${response.status}`);
       }

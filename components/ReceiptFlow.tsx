@@ -128,6 +128,11 @@ export default function ReceiptFlow() {
 
     if (!result.canceled) {
       const asset = result.assets[0];
+      // 10MB超の画像は拒否
+      if (asset.fileSize && asset.fileSize > 10 * 1024 * 1024) {
+        setErrorMessage('画像サイズが大きすぎます（10MB以内にしてください）');
+        return;
+      }
       setImage(asset.uri);
       setStep('confirm');
     }
@@ -144,6 +149,7 @@ export default function ReceiptFlow() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
         },
         body: JSON.stringify({ imageBase64 : base64 }),
       });
@@ -208,10 +214,25 @@ export default function ReceiptFlow() {
     });
   };
 
+  const validateReceipt = (r: ReceiptData): string | null => {
+    if (!r.store.trim()) return '店舗名を入力してください';
+    if (!r.date.trim()) return '日付を入力してください';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date.trim())) return '日付はYYYY-MM-DD形式で入力してください';
+    if (!r.total.trim() || Number.isNaN(Number(r.total))) return '合計金額を正しく入力してください';
+    if (Number(r.total) < 0) return '合計金額は0以上で入力してください';
+    return null;
+  };
+
   const handleRegister = async () => {
     if (!receipt) return;
     if (!user || !token) {
       Alert.alert('エラー', 'ログイン情報がありません');
+      return;
+    }
+
+    const validationError = validateReceipt(receipt);
+    if (validationError) {
+      setErrorMessage(validationError);
       return;
     }
 
